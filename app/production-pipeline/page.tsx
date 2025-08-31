@@ -1,0 +1,504 @@
+"use client"
+
+import { useState } from "react"
+import { SidebarNavigation } from "@/components/sidebar-navigation"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Checkbox } from "@/components/ui/checkbox"
+import { TypingAnimation } from "@/components/ui/typing-animation"
+import { InteractiveHoverButton } from "@/components/interactive-hover-button"
+import {
+  Home,
+  RefreshCw,
+  MoreVertical,
+  Calendar,
+  Eye,
+  Edit,
+  Copy,
+  Trash2,
+  BarChart3,
+  Clock,
+  CheckCircle,
+  FileText,
+  ImageIcon,
+  Video,
+  Layers,
+} from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+// Sample content data for the pipeline
+const sampleContent = {
+  drafts: [
+    {
+      id: "1",
+      title: "5 LinkedIn Growth Strategies That Actually Work",
+      type: "text",
+      framework: "Problem-Solution",
+      author: "You",
+      created: "2 hours ago",
+      modified: "30 min ago",
+      progress: 75,
+      wordCount: 450,
+    },
+    {
+      id: "2",
+      title: "Behind the Scenes: Building a Personal Brand",
+      type: "carousel",
+      framework: "Storytelling",
+      author: "You",
+      created: "1 day ago",
+      modified: "4 hours ago",
+      progress: 40,
+      wordCount: 280,
+    },
+  ],
+  scheduled: [
+    {
+      id: "3",
+      title: "The Future of Remote Work: What Leaders Need to Know",
+      type: "text",
+      framework: "Thought Leadership",
+      author: "You",
+      scheduledDate: "Tomorrow, 9:00 AM",
+      platform: "LinkedIn",
+      autoPost: true,
+    },
+  ],
+  published: [
+    {
+      id: "4",
+      title: "How I Increased My LinkedIn Engagement by 300%",
+      type: "text",
+      framework: "Case Study",
+      author: "You",
+      publishedDate: "2 days ago",
+      views: 2847,
+      likes: 156,
+      comments: 23,
+      shares: 12,
+      performance: "high",
+    },
+    {
+      id: "5",
+      title: "5 Tools Every Content Creator Should Use",
+      type: "carousel",
+      framework: "List",
+      author: "You",
+      publishedDate: "1 week ago",
+      views: 1523,
+      likes: 89,
+      comments: 15,
+      shares: 7,
+      performance: "medium",
+    },
+  ],
+  archived: [
+    {
+      id: "6",
+      title: "My Journey from Corporate to Entrepreneur",
+      type: "text",
+      framework: "Personal Story",
+      author: "You",
+      archivedDate: "2 weeks ago",
+      reason: "Campaign ended",
+      finalViews: 5234,
+      finalEngagement: 312,
+    },
+  ],
+}
+
+const getContentTypeIcon = (type: string) => {
+  switch (type) {
+    case "text":
+      return FileText
+    case "image":
+      return ImageIcon
+    case "carousel":
+      return Layers
+    case "video":
+      return Video
+    default:
+      return FileText
+  }
+}
+
+const getPerformanceBadge = (performance: string) => {
+  switch (performance) {
+    case "high":
+      return <Badge className="bg-green-100 text-green-800">High Performance</Badge>
+    case "medium":
+      return <Badge className="bg-yellow-100 text-yellow-800">Medium Performance</Badge>
+    case "low":
+      return <Badge className="bg-red-100 text-red-800">Low Performance</Badge>
+    default:
+      return null
+  }
+}
+
+export default function ProductionPipelinePage() {
+  const [selectedItems, setSelectedItems] = useState<string[]>([])
+  const [filterType, setFilterType] = useState<string>("all")
+
+  const handleSelectItem = (id: string) => {
+    setSelectedItems((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]))
+  }
+
+  const handleSelectAll = (stage: string) => {
+    const stageItems = sampleContent[stage as keyof typeof sampleContent]
+    const stageIds = stageItems.map((item) => item.id)
+    setSelectedItems((prev) => [...prev, ...stageIds])
+  }
+
+  return (
+    <div className="flex h-screen bg-background">
+      <SidebarNavigation />
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="flex h-14 items-center justify-between px-4">
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="/" className="flex items-center gap-2">
+                    <Home className="h-4 w-4" />
+                    Dashboard
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>Production Pipeline</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 overflow-auto p-4">
+          {/* Hero Section */}
+          <div className="mb-6">
+            <TypingAnimation
+              text="Production Pipeline"
+              className="text-3xl font-medium tracking-tight text-balance font-sans text-emerald-800 mb-2"
+            />
+            <p className="text-gray-600 text-pretty">Manage your content workflow from draft to published</p>
+          </div>
+
+          {/* Action Bar */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <InteractiveHoverButton
+                text="Create New Content"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    Bulk Actions
+                    <MoreVertical className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem>Move to Scheduled</DropdownMenuItem>
+                  <DropdownMenuItem>Archive Selected</DropdownMenuItem>
+                  <DropdownMenuItem>Delete Selected</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="text">Text Posts</SelectItem>
+                  <SelectItem value="carousel">Carousels</SelectItem>
+                  <SelectItem value="video">Videos</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Status Counter Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Drafts</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">{sampleContent.drafts.length}</div>
+                <p className="text-xs text-gray-500 mt-1">2 need attention</p>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Scheduled</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">{sampleContent.scheduled.length}</div>
+                <p className="text-xs text-gray-500 mt-1">Next: Tomorrow 9AM</p>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Published</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{sampleContent.published.length}</div>
+                <p className="text-xs text-gray-500 mt-1">Avg. 2.1K views</p>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Archived</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-600">{sampleContent.archived.length}</div>
+                <p className="text-xs text-gray-500 mt-1">This month</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Kanban Pipeline */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            {/* Drafts Column */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-blue-600">Drafts ({sampleContent.drafts.length})</h3>
+                <Button variant="ghost" size="sm" onClick={() => handleSelectAll("drafts")}>
+                  Select All
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {sampleContent.drafts.map((item) => {
+                  const IconComponent = getContentTypeIcon(item.type)
+                  return (
+                    <Card key={item.id} className="p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={selectedItems.includes(item.id)}
+                          onCheckedChange={() => handleSelectItem(item.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <IconComponent className="h-4 w-4 text-gray-500" />
+                            <Badge variant="outline" className="text-xs">
+                              {item.framework}
+                            </Badge>
+                          </div>
+                          <h4 className="font-medium text-sm mb-2 line-clamp-2">{item.title}</h4>
+                          <div className="space-y-2">
+                            <Progress value={item.progress} className="h-2" />
+                            <div className="flex justify-between text-xs text-gray-500">
+                              <span>{item.wordCount} words</span>
+                              <span>{item.modified}</span>
+                            </div>
+                          </div>
+                          <div className="flex gap-1 mt-3">
+                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
+                              <Edit className="h-3 w-3 mr-1" />
+                              Continue
+                            </Button>
+                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              Schedule
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Scheduled Column */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-orange-600">Scheduled ({sampleContent.scheduled.length})</h3>
+                <Button variant="ghost" size="sm" onClick={() => handleSelectAll("scheduled")}>
+                  Select All
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {sampleContent.scheduled.map((item) => {
+                  const IconComponent = getContentTypeIcon(item.type)
+                  return (
+                    <Card key={item.id} className="p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={selectedItems.includes(item.id)}
+                          onCheckedChange={() => handleSelectItem(item.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <IconComponent className="h-4 w-4 text-gray-500" />
+                            <Badge variant="outline" className="text-xs">
+                              {item.framework}
+                            </Badge>
+                          </div>
+                          <h4 className="font-medium text-sm mb-2 line-clamp-2">{item.title}</h4>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                              <Clock className="h-3 w-3" />
+                              {item.scheduledDate}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                              <CheckCircle className="h-3 w-3 text-green-500" />
+                              Auto-posting enabled
+                            </div>
+                          </div>
+                          <div className="flex gap-1 mt-3">
+                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
+                              <Edit className="h-3 w-3 mr-1" />
+                              Edit
+                            </Button>
+                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
+                              <Eye className="h-3 w-3 mr-1" />
+                              Preview
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Published Column */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-green-600">Published ({sampleContent.published.length})</h3>
+                <Button variant="ghost" size="sm" onClick={() => handleSelectAll("published")}>
+                  Select All
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {sampleContent.published.map((item) => {
+                  const IconComponent = getContentTypeIcon(item.type)
+                  return (
+                    <Card key={item.id} className="p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={selectedItems.includes(item.id)}
+                          onCheckedChange={() => handleSelectItem(item.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <IconComponent className="h-4 w-4 text-gray-500" />
+                            <Badge variant="outline" className="text-xs">
+                              {item.framework}
+                            </Badge>
+                          </div>
+                          <h4 className="font-medium text-sm mb-2 line-clamp-2">{item.title}</h4>
+                          <div className="space-y-2">
+                            {getPerformanceBadge(item.performance)}
+                            <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                              <div>{item.views.toLocaleString()} views</div>
+                              <div>{item.likes} likes</div>
+                              <div>{item.comments} comments</div>
+                              <div>{item.shares} shares</div>
+                            </div>
+                            <p className="text-xs text-gray-500">{item.publishedDate}</p>
+                          </div>
+                          <div className="flex gap-1 mt-3">
+                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
+                              <BarChart3 className="h-3 w-3 mr-1" />
+                              Analytics
+                            </Button>
+                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
+                              <Copy className="h-3 w-3 mr-1" />
+                              Repurpose
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Archived Column */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-gray-600">Archived ({sampleContent.archived.length})</h3>
+                <Button variant="ghost" size="sm" onClick={() => handleSelectAll("archived")}>
+                  Select All
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {sampleContent.archived.map((item) => {
+                  const IconComponent = getContentTypeIcon(item.type)
+                  return (
+                    <Card key={item.id} className="p-4 hover:shadow-md transition-shadow opacity-75">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={selectedItems.includes(item.id)}
+                          onCheckedChange={() => handleSelectItem(item.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <IconComponent className="h-4 w-4 text-gray-500" />
+                            <Badge variant="outline" className="text-xs">
+                              {item.framework}
+                            </Badge>
+                          </div>
+                          <h4 className="font-medium text-sm mb-2 line-clamp-2">{item.title}</h4>
+                          <div className="space-y-2">
+                            <div className="text-xs text-gray-600">
+                              <div>Final: {item.finalViews.toLocaleString()} views</div>
+                              <div>{item.finalEngagement} total engagement</div>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              Archived {item.archivedDate} • {item.reason}
+                            </p>
+                          </div>
+                          <div className="flex gap-1 mt-3">
+                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
+                              <Copy className="h-3 w-3 mr-1" />
+                              Duplicate
+                            </Button>
+                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
