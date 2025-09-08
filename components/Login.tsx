@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useRouter } from 'next/navigation'
 
 type ViewMode = 'login' | 'signup' | 'forgot-password' | 'reset-sent'
 
@@ -16,6 +17,7 @@ export default function Login() {
   const [resendCountdown, setResendCountdown] = useState(0)
   const [stayLoggedInChecked, setStayLoggedInChecked] = useState(false)
   const { signIn, signUp, setStayLoggedInPreference } = useAuth()
+  const router = useRouter()
 
   // Initialize stay logged in preference from storage
   useEffect(() => {
@@ -61,6 +63,7 @@ export default function Login() {
         } else {
           // Save stay logged in preference
           setStayLoggedInPreference(stayLoggedInChecked)
+          router.push('/dashboard') 
         }
       }
     } catch (error) {
