@@ -1,5 +1,8 @@
 "use client"
 
+import { useAuth } from '../contexts/AuthContext'
+import { ContentIdea, createContentIdea, getContentIdeas, updateContentIdea } from '../lib/supabase'
+import { Crown, Clock, ArrowRight, TrendingUp, Target, Users, BarChart3, Sparkles } from 'lucide-react'
 import { SidebarNavigation } from "@/components/sidebar-navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -20,62 +23,109 @@ import React from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
-export default function IdeasLibraryPage() {
-  const router = useRouter()
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [selectedFilter, setSelectedFilter] = React.useState("all")
-  const [selectedItems, setSelectedItems] = React.useState<string[]>([])
+interface IdeaLibraryProps {
+  onUseInStandardMode?: (idea: ContentIdea) => void
+  onUseInWriterSuite?: (idea: ContentIdea) => void
+  onUseThisContent?: (idea: ContentIdea) => void
+}
 
+export default function IdeasLibraryPage({ onUseInStandardMode, onUseInWriterSuite, onUseThisContent }: IdeaLibraryProps = {}) {
+  const router = useRouter()
+  const { user, profile } = useAuth()
+const [ideas, setIdeas] = React.useState<ContentIdea[]>([])
+const [loading, setLoading] = React.useState(false)
+const [activeSection, setActiveSection] = React.useState<'active' | 'used' | 'archived'>('active')
+const [selectedIdeaForOverlay, setSelectedIdeaForOverlay] = React.useState<ContentIdea | null>(null)
+const [searchQuery, setSearchQuery] = React.useState("")
+const [selectedFilter, setSelectedFilter] = React.useState("all")
+const [selectedItems, setSelectedItems] = React.useState<string[]>([])
+  
   const handleTabChange = (value: string) => {
     if (value === "ideas-hub") {
       router.push("/ideas-hub")
     }
   }
 
-  // Sample data for saved ideas
-  const savedIdeas = [
-    {
-      id: "1",
-      type: "conversation",
-      title: "AI Content Strategy Discussion",
-      description: "Conversation with Marcus about implementing AI in content workflows",
-      date: "2024-01-15",
-      tags: ["AI", "Strategy", "Content"],
-      performance: "High",
-      icon: MessageSquare,
-      color: "bg-blue-100 text-blue-600",
-    },
-    {
-      id: "2",
-      type: "topic",
-      title: "Remote Leadership Best Practices",
-      description: "AI-generated topic about managing distributed teams effectively",
-      date: "2024-01-14",
-      tags: ["Leadership", "Remote Work"],
-      performance: "Medium",
-      icon: Lightbulb,
-      color: "bg-yellow-100 text-yellow-600",
-    },
-    {
-      id: "4",
-      type: "repurposed",
-      title: "Blog to LinkedIn Series",
-      description: "Repurposed content from 'The Future of SaaS' blog post",
-      date: "2024-01-12",
-      tags: ["SaaS", "Repurposed"],
-      performance: "Medium",
-      icon: Recycle,
-      color: "bg-green-100 text-green-600",
-    },
-  ]
+  // Add this after the handleTabChange function:
+React.useEffect(() => {
+  loadSavedIdeas()
+}, [user])
 
-  const filteredIdeas = savedIdeas.filter((idea) => {
-    const matchesSearch =
-      idea.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      idea.description.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesFilter = selectedFilter === "all" || idea.type === selectedFilter
-    return matchesSearch && matchesFilter
-  })
+const loadSavedIdeas = async () => {
+  if (!user) return
+  setLoading(true)
+  try {
+    const { data, error } = await getContentIdeas(user.id, 100)
+    if (error) throw error
+    setIdeas(data || [])
+  } catch (error) {
+    console.error('Error loading saved ideas:', error)
+    setIdeas([])
+  } finally {
+    setLoading(false)
+  }
+}
+
+const handleUpdateIdea = async (ideaId: string, updates: Partial<ContentIdea>) => {
+  try {
+    const { error } = await updateContentIdea(ideaId, updates)
+    if (error) throw error
+    loadSavedIdeas()
+  } catch (error) {
+    console.error('Error updating idea:', error)
+  }
+}
+  const getCategoryIcon = (pillar: string) => {
+  switch (pillar) {
+    case 'industry_trends': return TrendingUp
+    case 'case_studies': return BarChart3
+    case 'leadership': return Users
+    case 'saas_metrics': return Target
+    default: return Sparkles
+  }
+}
+
+const getCategoryColor = (pillar: string) => {
+  switch (pillar) {
+    case 'industry_trends': return 'bg-blue-100 text-blue-600'
+    case 'case_studies': return 'bg-green-100 text-green-600'
+    case 'leadership': return 'bg-purple-100 text-purple-600'
+    case 'saas_metrics': return 'bg-orange-100 text-orange-600'
+    default: return 'bg-gray-100 text-gray-600'
+  }
+}
+
+const formatTimeAgo = (dateString: string) => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+  
+  if (diffInHours < 1) return 'Just now'
+  if (diffInHours < 24) return `${diffInHours}h ago`
+  
+  const diffInDays = Math.floor(diffInHours / 24)
+  if (diffInDays < 7) return `${diffInDays}d ago`
+  
+  const diffInWeeks = Math.floor(diffInDays / 7)
+  return `${diffInWeeks}w ago`
+}
+
+const sectionedIdeas = {
+  active: ideas.filter(idea => idea.status === 'active'),
+  used: ideas.filter(idea => idea.status === 'used'), 
+  archived: ideas.filter(idea => idea.status === 'archived')
+}
+
+const currentIdeas = sectionedIdeas[activeSection]
+
+ // Replace the entire savedIdeas array and filteredIdeas logic with:
+const filteredIdeas = currentIdeas.filter((idea) => {
+  const matchesSearch =
+    idea.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    idea.description.toLowerCase().includes(searchQuery.toLowerCase())
+  const matchesFilter = selectedFilter === "all" || idea.content_pillar === selectedFilter
+  return matchesSearch && matchesFilter
+})
 
   const handleSelectItem = (id: string) => {
     setSelectedItems((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]))
@@ -165,109 +215,116 @@ export default function IdeasLibraryPage() {
                 </div>
 
                 {/* Filter and Sort Section */}
-                <div className="flex flex-wrap items-center gap-4 p-4 bg-muted/30 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm font-medium text-gray-700">Filter by:</span>
+                {/* Status Section Tabs and Filter */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+                    <button
+                      onClick={() => setActiveSection('active')}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                        activeSection === 'active' 
+                          ? 'bg-white text-gray-900 shadow-sm' 
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Fresh Ideas ({sectionedIdeas.active.length})
+                    </button>
+                    <button
+                      onClick={() => setActiveSection('used')}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                        activeSection === 'used' 
+                          ? 'bg-white text-gray-900 shadow-sm' 
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Used ({sectionedIdeas.used.length})
+                    </button>
+                    <button
+                      onClick={() => setActiveSection('archived')}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                        activeSection === 'archived' 
+                          ? 'bg-white text-gray-900 shadow-sm' 
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Archived ({sectionedIdeas.archived.length})
+                    </button>
                   </div>
 
-                  <Select value={selectedFilter} onValueChange={setSelectedFilter}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Content type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="conversation">Marcus Conversations</SelectItem>
-                      <SelectItem value="topic">Generated Topics</SelectItem>
-                      <SelectItem value="repurposed">Repurposed Content</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select defaultValue="recent">
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="recent">Most Recent</SelectItem>
-                      <SelectItem value="performance">Performance</SelectItem>
-                      <SelectItem value="alphabetical">A-Z</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  {selectedItems.length > 0 && (
-                    <div className="flex items-center gap-2 ml-auto">
-                      <span className="text-sm text-gray-600">{selectedItems.length} selected</span>
-                      <Button variant="outline" size="sm">
-                        <Copy className="h-4 w-4 mr-1" />
-                        Duplicate
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Delete
-                      </Button>
+                  <div className="flex flex-wrap items-center gap-4 p-4 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-700">Filter by:</span>
                     </div>
-                  )}
-                </div>
 
+                    <Select value={selectedFilter} onValueChange={setSelectedFilter}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Content pillar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Pillars</SelectItem>
+                        <SelectItem value="industry_trends">Industry Trends</SelectItem>
+                        <SelectItem value="case_studies">Case Studies</SelectItem>
+                        <SelectItem value="leadership">Leadership</SelectItem>
+                        <SelectItem value="saas_metrics">SaaS Metrics</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {selectedItems.length > 0 && (
+                      <div className="flex items-center gap-2 ml-auto">
+                        <span className="text-sm text-gray-600">{selectedItems.length} selected</span>
+                        <Button variant="outline" size="sm">
+                          <Copy className="h-4 w-4 mr-1" />
+                          Duplicate
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 {/* Content Grid */}
-                {filteredIdeas.length > 0 ? (
+                {loading ? (
+                  <div className="text-center py-12">
+                    <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading your saved ideas...</p>
+                  </div>
+                ) : filteredIdeas.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredIdeas.map((idea) => {
-                      const IconComponent = idea.icon
+                      const IconComponent = getCategoryIcon(idea.content_pillar || '')
                       return (
                         <ExpandableCard
                           key={idea.id}
                           id={idea.id}
                           title={idea.title}
                           description={idea.description}
-                          date={idea.date}
+                          date={formatTimeAgo(idea.created_at)}
                           tags={idea.tags}
-                          performance={idea.performance}
-                          icon={idea.icon}
-                          color={idea.color}
+                          performance="Medium"
+                          icon={IconComponent}
+                          color={getCategoryColor(idea.content_pillar || '')}
                           isSelected={selectedItems.includes(idea.id)}
                           onSelect={handleSelectItem}
-                          type={idea.type}
+                          type={idea.content_pillar || 'general'}
+                          onClick={() => setSelectedIdeaForOverlay(idea)}
                         >
-                          {/* Custom expanded content for each idea type */}
                           <div className="space-y-3">
                             <div>
-                              <h4 className="text-sm font-medium text-gray-900 mb-2">Additional Details</h4>
-                              <p className="text-sm text-gray-600 leading-relaxed">
-                                {idea.type === "conversation" &&
-                                  "Full conversation transcript and key insights from the discussion with Marcus about AI implementation strategies."}
-                                {idea.type === "topic" &&
-                                  "Complete topic breakdown with suggested angles, target audience insights, and content pillars for maximum engagement."}
-                                {idea.type === "repurposed" &&
-                                  "Original source content, transformation notes, and performance comparison between original and repurposed versions."}
-                              </p>
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-medium text-gray-900 mb-2">Performance Metrics</h4>
-                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div className="bg-gray-50 p-2 rounded">
-                                  <span className="text-gray-500">Engagement:</span>
-                                  <span className="ml-1 font-medium">
-                                    {idea.performance === "High" ? "12.5%" : "8.2%"}
-                                  </span>
-                                </div>
-                                <div className="bg-gray-50 p-2 rounded">
-                                  <span className="text-gray-500">Saves:</span>
-                                  <span className="ml-1 font-medium">{idea.performance === "High" ? "89" : "34"}</span>
-                                </div>
-                              </div>
+                              <h4 className="text-sm font-medium text-gray-900 mb-2">Description</h4>
+                              <p className="text-sm text-gray-600 leading-relaxed">{idea.description}</p>
                             </div>
                             <div className="pt-2 border-t border-gray-100">
                               <Button
-                                onClick={() =>
-                                  router.push(
-                                    `/formula-matching?ideaId=${idea.id}&title=${encodeURIComponent(idea.title)}&type=${idea.type}`,
-                                  )
-                                }
+                                onClick={() => {
+                                  onUseThisContent?.(idea)
+                                  setSelectedIdeaForOverlay(null)
+                                }}
                                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                                 size="sm"
                               >
-                                Use Idea
+                                Use This Topic
                               </Button>
                             </div>
                           </div>
@@ -280,7 +337,12 @@ export default function IdeasLibraryPage() {
                     <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No ideas found</h3>
                     <p className="text-gray-600 mb-4">
-                      {searchQuery ? "Try adjusting your search terms" : "Start creating ideas to see them here"}
+                      {activeSection === 'active' 
+                        ? "You haven't saved any ideas yet. Visit the Ideas Hub to start brainstorming!"
+                        : activeSection === 'used'
+                          ? "No used ideas yet. Complete a content creation workflow to see ideas here."
+                          : "No archived ideas yet."
+                      }
                     </p>
                     <Button onClick={() => router.push("/ideas-hub")} className="bg-emerald-600 hover:bg-emerald-700">
                       <Lightbulb className="h-4 w-4 mr-2" />
@@ -291,6 +353,55 @@ export default function IdeasLibraryPage() {
               </div>
             </div>
           </GridBeams>
+
+          {/* Rich Data Overlay Modal */}
+      {selectedIdeaForOverlay && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">{selectedIdeaForOverlay.title}</h3>
+              <button
+                onClick={() => setSelectedIdeaForOverlay(null)}
+                className="text-gray-400 hover:text-gray-600 p-2"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-6">
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Description</h4>
+                  <p className="text-gray-700">{selectedIdeaForOverlay.description}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Tags</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedIdeaForOverlay.tags.map((tag, index) => (
+                      <span key={index} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-gray-200 p-6">
+              <Button
+                onClick={() => {
+                  onUseThisContent?.(selectedIdeaForOverlay)
+                  setSelectedIdeaForOverlay(null)
+                }}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-teal-600 text-white text-lg font-medium rounded-lg hover:bg-teal-700 transition"
+              >
+                <ArrowRight className="w-5 h-5" />
+                Use This Topic
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
         </div>
       </div>
     </div>
