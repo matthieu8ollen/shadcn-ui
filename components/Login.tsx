@@ -63,7 +63,7 @@ export default function Login() {
         } else {
           // Save stay logged in preference
           setStayLoggedInPreference(stayLoggedInChecked)
-          router.push('/dashboard') 
+          router.push('/') 
         }
       }
     } catch (error) {
