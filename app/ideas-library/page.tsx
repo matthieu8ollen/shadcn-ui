@@ -1,7 +1,7 @@
 "use client"
 
-import { useAuth } from '../contexts/AuthContext'
-import { ContentIdea, createContentIdea, getContentIdeas, updateContentIdea } from '../lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
+import { ContentIdea, getContentIdeas, updateContentIdea } from '@/lib/supabase'
 import { Crown, Clock, ArrowRight, TrendingUp, Target, Users, BarChart3, Sparkles } from 'lucide-react'
 import { SidebarNavigation } from "@/components/sidebar-navigation"
 import { Input } from "@/components/ui/input"
