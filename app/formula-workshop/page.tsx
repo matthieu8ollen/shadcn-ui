@@ -1,5 +1,13 @@
 "use client"
 
+import { useAuth } from "@/contexts/AuthContext"
+import { useState, useEffect } from "react"
+import { 
+  getContentFormulas, 
+  getFormulaSections, 
+  createContentFormula, 
+  updateContentFormula 
+} from "@/lib/supabase"
 import { SidebarNavigation } from "@/components/sidebar-navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -52,13 +60,40 @@ import {
   ArrowRight,
 } from "lucide-react"
 import React from "react"
+
+// Type definitions
+interface ContentFormula {
+  id: string
+  formula_name: string
+  description?: string
+  category: string
+  difficulty_level?: string
+  effectiveness_score?: number
+  reusability_score?: number
+  primary_target_role?: string
+  is_active?: boolean
+  is_premium?: boolean
+  created_at: string
+  sections?: FormulaSection[]
+}
+
+interface FormulaSection {
+  id: string
+  formula_id: string
+  section_order: number
+  section_name: string
+  section_purpose: string
+  section_template?: string
+  section_guidelines?: string
+}
 import Link from "next/link"
 
 export default function FormulaWorkshopPage() {
-  const [mainView, setMainView] = React.useState<"library" | "builder">("builder")
+  const { user } = useAuth()
+  const [mainView, setMainView] = React.useState<"library" | "builder">("library")
   const [selectedFormula, setSelectedFormula] = React.useState<string | null>(null)
   const [showFormulaOverlay, setShowFormulaOverlay] = React.useState(false)
-  const [overlayFormula, setOverlayFormula] = React.useState<any>(null)
+  const [overlayFormula, setOverlayFormula] = React.useState<ContentFormula | null>(null)
   const [formulaName, setFormulaName] = React.useState("")
   const [formulaDescription, setFormulaDescription] = React.useState("")
   const [formulaCategory, setFormulaCategory] = React.useState("")
@@ -66,66 +101,140 @@ export default function FormulaWorkshopPage() {
   const [generatedSample, setGeneratedSample] = React.useState("")
   const [isGenerating, setIsGenerating] = React.useState(false)
   const [analysisResults, setAnalysisResults] = React.useState<any>(null)
+  
+  // New state for database integration
+  const [formulas, setFormulas] = React.useState<ContentFormula[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState('')
+  const [searchTerm, setSearchTerm] = React.useState('')
+  const [categoryFilter, setCategoryFilter] = React.useState('all')
 
-  const existingFormulas = [
-    {
-      id: "aida",
-      name: "AIDA Formula",
-      category: "Classic",
-      successRate: 87,
-      usageCount: 234,
-      description: "Attention, Interest, Desire, Action - proven conversion formula",
-      sections: ["Hook/Attention", "Interest Builder", "Desire Creator", "Call to Action"],
-      icon: "⚡",
-    },
-    {
-      id: "problem-solution",
-      name: "Problem-Solution",
-      category: "Business",
-      successRate: 92,
-      usageCount: 189,
-      description: "Identify problem, present solution, show results",
-      sections: ["Problem Statement", "Solution Introduction", "Benefits", "Social Proof", "CTA"],
-      icon: "🎯",
-    },
-    {
-      id: "story-arc",
-      name: "Story Arc",
-      category: "Narrative",
-      successRate: 85,
-      usageCount: 156,
-      description: "Personal story with lesson and application",
-      sections: ["Setting", "Challenge", "Journey", "Resolution", "Lesson", "Application"],
-      icon: "📖",
-    },
-    {
-      id: "before-after",
-      name: "Before & After",
-      category: "Transformation",
-      successRate: 89,
-      usageCount: 203,
-      description: "Show transformation and the process behind it",
-      sections: ["Before State", "Catalyst", "Process", "After State", "Key Insights"],
-      icon: "🔄",
-    },
-  ]
+  // Load formulas from database
+  const loadFormulas = async () => {
+    if (!user) return
+    
+    try {
+      setLoading(true)
+      setError('')
+      
+      const { data: formulasData, error: formulasError } = await getContentFormulas()
+      
+      if (formulasError) {
+        throw formulasError
+      }
+      
+      // Transform database format to component format
+      const transformedFormulas = formulasData?.map((formula: any) => ({
+        id: formula.id,
+        name: formula.formula_name,
+        category: formula.category || 'Classic',
+        successRate: Math.round(formula.effectiveness_score || 85),
+        usageCount: Math.floor(Math.random() * 500) + 50, // Mock usage for now
+        description: formula.description || 'Proven content formula',
+        sections: [], // Will be loaded separately if needed
+        icon: getCategoryIcon(formula.category),
+        difficulty: formula.difficulty_level || 'intermediate',
+        targetRole: formula.primary_target_role || 'General',
+        isActive: formula.is_active !== false,
+        isPremium: formula.is_premium || false
+      })) || []
+      
+      setFormulas(transformedFormulas)
+    } catch (err) {
+      console.error('Error loading formulas:', err)
+      setError('Failed to load formulas. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const handleUseFormula = (formula: any) => {
+  const handleCreateFormula = async () => {
+    if (!user || !formulaName.trim() || !formulaCategory) return
+    
+    try {
+      const newFormula = {
+        formula_name: formulaName,
+        description: formulaDescription,
+        category: formulaCategory,
+        difficulty_level: 'intermediate',
+        is_active: true,
+        is_custom: true,
+        created_by: user.id
+      }
+      
+      const { data, error } = await createContentFormula(newFormula)
+      
+      if (error) throw error
+      
+      // Reset form and reload formulas
+      setFormulaName('')
+      setFormulaDescription('')
+      setFormulaCategory('')
+      loadFormulas()
+      
+      // Close dialog - you'll need to add state for this
+    } catch (err) {
+      console.error('Error creating formula:', err)
+      setError('Failed to create formula. Please try again.')
+    }
+  }
+  
+  // Helper function to get category icon
+  const getCategoryIcon = (category: string) => {
+    const icons: Record<string, string> = {
+      'authority': '👑',
+      'contrarian': '⚡',
+      'personal': '📖',
+      'framework': '🎯',
+      'classic': '⚡',
+      'business': '💼',
+      'narrative': '📖',
+      'transformation': '🔄'
+    }
+    return icons[category?.toLowerCase()] || '⚡'
+  }
+  
+  // Load formulas on component mount
+  useEffect(() => {
+    if (user) {
+      loadFormulas()
+    }
+  }, [user])
+  
+  // Filter formulas based on search and category
+  const filteredFormulas = formulas.filter(formula => {
+    const matchesSearch = formula.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         formula.description.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesCategory = categoryFilter === 'all' || formula.category.toLowerCase() === categoryFilter.toLowerCase()
+    return matchesSearch && matchesCategory
+  })
+
+ const handleUseFormula = (formula: ContentFormula) => {
     setOverlayFormula(formula)
     setShowFormulaOverlay(true)
   }
 
   const handleOverlayOption = (option: string) => {
     setShowFormulaOverlay(false)
+    const formulaData = {
+      formula_id: overlayFormula?.id,
+      formula_name: overlayFormula?.name,
+      category: overlayFormula?.category,
+      description: overlayFormula?.description
+    }
+    
     switch (option) {
       case "chat":
-        console.log("Navigate to chat with expert for", overlayFormula?.name)
+        // Navigate to Marcus chat with formula context
+        window.location.href = `/chat/marcus?formula=${overlayFormula?.id}&name=${encodeURIComponent(overlayFormula?.name || '')}`
         break
       case "topics":
-        console.log("Navigate to browse topics for", overlayFormula?.name)
+        // Navigate to AI suggested topics with formula filter
+        window.location.href = `/ideas-hub/ai-suggested?formula=${overlayFormula?.id}`
         break
       case "direct":
-        console.log("Navigate to writer suite with", overlayFormula?.name)
+        // Navigate to Writer Suite with formula pre-selected
+        window.location.href = `/writer-suite?mode=formula&formula=${overlayFormula?.id}`
         break
     }
   }
@@ -282,7 +391,13 @@ What's your biggest content creation challenge? Drop it in the comments 👇`)
                           value={formulaDescription}
                           onChange={(e) => setFormulaDescription(e.target.value)}
                         />
-                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700">Create Formula</Button>
+                        <Button 
+                          className="w-full bg-emerald-600 hover:bg-emerald-700"
+                          onClick={handleCreateFormula}
+                          disabled={!formulaName.trim() || !formulaCategory}
+                        >
+                          Create Formula
+                        </Button>
                       </div>
                     </DialogContent>
                   </Dialog>
@@ -300,7 +415,12 @@ What's your biggest content creation challenge? Drop it in the comments 👇`)
                   <div className="flex-1 max-w-md">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input placeholder="Search formulas..." className="pl-10" />
+                      <Input 
+                        placeholder="Search formulas..." 
+                        className="pl-10"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
                     </div>
                   </div>
                 </div>
@@ -343,7 +463,27 @@ What's your biggest content creation challenge? Drop it in the comments 👇`)
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {existingFormulas.map((formula) => (
+                  {loading ? (
+                    <div className="col-span-full flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                      <span className="ml-3 text-gray-600">Loading formulas...</span>
+                    </div>
+                  ) : error ? (
+                    <div className="col-span-full bg-red-50 border border-red-200 rounded-lg p-4">
+                      <p className="text-red-600">{error}</p>
+                      <button 
+                        onClick={loadFormulas}
+                        className="mt-2 text-sm text-red-700 underline hover:no-underline"
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  ) : filteredFormulas.length === 0 ? (
+                    <div className="col-span-full text-center py-12">
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No formulas found</h3>
+                      <p className="text-gray-600">Try adjusting your search or category filter.</p>
+                    </div>
+                  ) : filteredFormulas.map((formula) => (
                     <ExpandableCard
                       key={formula.id}
                       title={formula.name}
@@ -389,6 +529,19 @@ What's your biggest content creation challenge? Drop it in the comments 👇`)
                 <div className="lg:col-span-3 space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium text-emerald-800">Formula Library</h3>
+                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                      <SelectTrigger className="w-40">
+                        <SelectValue placeholder="Category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        <SelectItem value="authority">Authority</SelectItem>
+                        <SelectItem value="contrarian">Contrarian</SelectItem>
+                        <SelectItem value="personal">Personal</SelectItem>
+                        <SelectItem value="framework">Framework</SelectItem>
+                        <SelectItem value="business">Business</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Select defaultValue="effectiveness">
                       <SelectTrigger className="w-32">
                         <SelectValue />
