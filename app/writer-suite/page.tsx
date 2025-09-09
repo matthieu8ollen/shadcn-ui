@@ -45,58 +45,147 @@ import {
 import React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { useAuth } from "@/contexts/AuthContext"
+import { getContentFormulas, type ContentFormula, type FormulaSection } from "@/lib/supabase"
 
 export default function WriterSuitePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user } = useAuth()
   const [currentSection, setCurrentSection] = React.useState(1)
   const [isTemplateView, setIsTemplateView] = React.useState(true)
   const [variables, setVariables] = React.useState<Record<string, string>>({})
   const [sessionTime, setSessionTime] = React.useState(0)
   const [isToolbarVisible, setIsToolbarVisible] = React.useState(false)
   const [activeGuidanceCard, setActiveGuidanceCard] = React.useState<string | null>(null)
+  
+  // Real data state
+  const [formula, setFormula] = React.useState<any>(null)
+  const [formulaSections, setFormulaSections] = React.useState<any[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [ideationData, setIdeationData] = React.useState<any>(null)
 
   const formulaId = searchParams.get("formulaId")
   const ideaId = searchParams.get("ideaId")
   const ideaTitle = searchParams.get("title") || "Content Creation"
+  // Load formula data from URL parameters and database
+React.useEffect(() => {
+  const loadFormulaData = async () => {
+    if (!user || !formulaId) return
+    
+    try {
+      setLoading(true)
+      
+      // Extract idea data from URL parameters
+      const ideaData = {
+        id: ideaId,
+        title: searchParams.get("title") || "",
+        description: searchParams.get("description") || "",
+        type: searchParams.get("type") || "",
+        contentPillar: searchParams.get("contentPillar") || "",
+        tags: JSON.parse(searchParams.get("tags") || "[]"),
+        sourceData: JSON.parse(searchParams.get("sourceData") || "{}")
+      }
+      setIdeationData(ideaData)
+      
+      // Load formula from database
+      const { data: formulasData, error } = await getContentFormulas(user.id)
+      if (error) throw error
+      
+      const selectedFormula = formulasData?.find(f => f.formula_id === formulaId)
+      if (!selectedFormula) throw new Error("Formula not found")
+      
+      setFormula(selectedFormula)
+      
+      // Transform database sections to component format
+      const dbSections = selectedFormula.formula_sections || []
+      const sortedSections = dbSections.sort((a: any, b: any) => a.section_order - b.section_order)
+      
+      const transformedSections = sortedSections.map((section: any, index: number) => ({
+        id: section.section_order,
+        title: section.section_name,
+        description: section.section_purpose || "Complete this section",
+        variables: extractVariablesFromTemplate(section.section_template || ""),
+        completed: false,
+        section_template: section.section_template,
+        section_guidelines: section.section_guidelines,
+        word_count_target: section.word_count_target,
+        psychological_purpose: section.psychological_purpose
+      }))
+      
+      setFormulaSections(transformedSections)
+      
+    } catch (error) {
+      console.error("Error loading formula:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  loadFormulaData()
+}, [user, formulaId, ideaId])
 
-  const formulaSections = [
-    {
-      id: 1,
-      title: "Hook & Problem",
-      description: "Grab attention with a compelling opening",
-      variables: ["hook_statement", "problem_description", "target_audience"],
-      completed: true,
-    },
-    {
-      id: 2,
-      title: "Solution Introduction",
-      description: "Present your solution clearly",
-      variables: ["solution_overview", "key_benefit", "credibility_marker"],
-      completed: false,
-    },
-    {
-      id: 3,
-      title: "Supporting Evidence",
-      description: "Provide proof and examples",
-      variables: ["example_story", "data_point", "social_proof"],
-      completed: false,
-    },
-    {
-      id: 4,
-      title: "Implementation Steps",
-      description: "Show how to apply the solution",
-      variables: ["step_1", "step_2", "step_3", "implementation_tip"],
-      completed: false,
-    },
-    {
-      id: 5,
-      title: "Call to Action",
-      description: "Drive engagement and next steps",
-      variables: ["cta_statement", "engagement_question", "next_step"],
-      completed: false,
-    },
-  ]
+// Extract template variables from section template
+const extractVariablesFromTemplate = (template: string) => {
+  const matches = template.match(/\[([^\]]+)\]/g) || []
+  return matches.map(match => match.slice(1, -1).toLowerCase().replace(/\s+/g, '_'))
+}
+  // AI Content Generation
+const generateAIContent = async (sectionData: any) => {
+  if (!user || !formula || !ideationData) return
+  
+  try {
+    const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
+    
+    const payload = {
+      user_id: user.id,
+      session_id: sessionId,
+      request_type: 'generate_content_with_guidance',
+      timestamp: new Date().toISOString(),
+      callback_url: `${window.location.origin}/api/formulas/content/callback`,
+      
+      selected_formula: {
+        formula_id: formula.formula_id,
+        name: formula.formula_name,
+        category: formula.formula_category
+      },
+      
+      title: ideationData.title,
+      content_type: ideationData.sourceData.content_type || 'personal_story',
+      selected_hook: ideationData.description,
+      hooks: [ideationData.description],
+      key_takeaways: ideationData.tags,
+      
+      current_section: {
+        section_name: sectionData.title,
+        section_purpose: sectionData.description,
+        section_template: sectionData.section_template
+      },
+      
+      user_context: {
+        role: user?.user_metadata?.role || 'executive'
+      }
+    }
+    
+    const response = await fetch('https://testcyber.app.n8n.cloud/webhook/1f6e3c3f-b68c-4f71-b83f-7330b528db58', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    
+    const data = await response.json()
+    
+    if (data.message === "Workflow was started") {
+      console.log('🚀 AI content generation started for section:', sectionData.title)
+      return true
+    }
+    
+    return false
+  } catch (error) {
+    console.error('Error generating AI content:', error)
+    return false
+  }
+}
 
   const currentSectionData = formulaSections.find((s) => s.id === currentSection)
 
@@ -224,29 +313,50 @@ export default function WriterSuitePage() {
   }
 
   const generatePreview = () => {
-    if (isTemplateView) {
-      return `[${variables.hook_statement || "HOOK_STATEMENT"}]
-
-[${variables.problem_description || "PROBLEM_DESCRIPTION"}]
-
-[${variables.solution_overview || "SOLUTION_OVERVIEW"}]
-
-[${variables.key_benefit || "KEY_BENEFIT"}]
-
-[${variables.cta_statement || "CTA_STATEMENT"}]`
-    } else {
-      return `${variables.hook_statement || "Your compelling hook goes here..."}
-
-${variables.problem_description || "Describe the problem your audience faces..."}
-
-${variables.solution_overview || "Present your solution clearly..."}
-
-${variables.key_benefit || "Highlight the main benefit..."}
-
-${variables.cta_statement || "What's your call to action?"}`
-    }
+  if (isTemplateView) {
+    // Show template with variables
+    return formulaSections.map(section => {
+      const sectionVariables = section.variables.map(v => variables[v] || `[${v.replace(/_/g, ' ').toUpperCase()}]`)
+      return sectionVariables.join('\n\n')
+    }).join('\n\n---\n\n')
+  } else {
+    // Show filled content
+    return formulaSections.map(section => {
+      const sectionVariables = section.variables.map(v => 
+        variables[v] || `Your ${v.replace(/_/g, ' ')} goes here...`
+      )
+      return sectionVariables.join('\n\n')
+    }).join('\n\n')
   }
+}
 
+  if (loading) {
+  return (
+    <div className="flex h-screen bg-white">
+      <SidebarNavigation />
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading formula...</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+if (!formula) {
+  return (
+    <div className="flex h-screen bg-white">
+      <SidebarNavigation />
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Formula not found</p>
+          <Button onClick={() => router.back()} className="mt-4">Go Back</Button>
+        </div>
+      </div>
+    </div>
+  )
+}
   return (
     <div className="flex h-screen bg-white">
       <SidebarNavigation />
@@ -374,7 +484,12 @@ ${variables.cta_statement || "What's your call to action?"}`
                             <label className="text-sm font-medium text-gray-700 capitalize">
                               {variable.replace(/_/g, " ")}
                             </label>
-                            <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-emerald-600 hover:text-emerald-700"
+                              onClick={() => generateAIContent(currentSectionData)}
+                            >
                               <Sparkles className="h-4 w-4 mr-1" />
                               AI Suggest
                             </Button>
