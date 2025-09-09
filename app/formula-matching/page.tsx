@@ -205,17 +205,6 @@ const enhanceFormulasWithAI = (dbFormulas: any[], aiRecommendations: any[]) => {
     const aiMatch = aiRecommendations.find(ai => ai.formula_id === dbFormula.formula_id)
     
     if (aiMatch) {
-      _aiData: {
-  confidence: aiMatch.match_score,
-  whyPerfect: aiMatch.why_it_works,
-  source: 'AI Analysis'
-},
-exampleSections: {
-  hook: `Hook for: ${dbFormula.formula_name}`,
-  main: "Main content section...",
-  insight: "Key insight or takeaway...",
-  cta: "What's your experience? Share below 👇"
-}
       return {
         ...dbFormula,
         id: dbFormula.formula_id,
@@ -234,6 +223,12 @@ exampleSections: {
           confidence: aiMatch.match_score,
           whyPerfect: aiMatch.why_it_works,
           source: 'AI Analysis'
+        },
+        exampleSections: {
+          hook: `Hook for: ${dbFormula.formula_name}`,
+          main: "Main content section...",
+          insight: "Key insight or takeaway...",
+          cta: "What's your experience? Share below 👇"
         }
       }
     }
@@ -252,12 +247,13 @@ exampleSections: {
       complexity: dbFormula.difficulty_level || 'Medium',
       timeToComplete: `${Math.round((dbFormula.estimated_word_count || 400) / 100) * 5}-${Math.round((dbFormula.estimated_word_count || 400) / 100) * 7} min`,
       expectedEngagement: 'Medium',
-exampleSections: {
-  hook: `Hook for: ${dbFormula.formula_name}`,
-  main: "Main content section...",
-  insight: "Key insight or takeaway...",
-  cta: "What's your experience? Share below 👇"
-}
+      exampleSections: {
+        hook: `Hook for: ${dbFormula.formula_name}`,
+        main: "Main content section...",
+        insight: "Key insight or takeaway...",
+        cta: "What's your experience? Share below 👇"
+      }
+    }
   })
 }
 
