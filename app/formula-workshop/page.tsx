@@ -594,7 +594,7 @@ What's your biggest content creation challenge? Drop it in the comments 👇`)
                   </div>
 
                   <div className="space-y-3">
-                    {existingFormulas.map((formula) => (
+                    {filteredFormulas.map((formula) => (
                       <ExpandableCard
                         key={formula.id}
                         title={formula.name}
