@@ -41,9 +41,20 @@ export default function FormulaMatchingPage() {
   const [isAnalyzing, setIsAnalyzing] = React.useState(true)
 
   // Get idea details from URL params
-  const ideaId = searchParams.get("ideaId")
-  const ideaTitle = searchParams.get("title") || "Content Idea"
-  const ideaType = searchParams.get("type") || "topic"
+const ideaId = searchParams.get("ideaId")
+const ideaTitle = searchParams.get("title") || "Content Idea"
+const ideaDescription = searchParams.get("description") || ""
+const ideaType = searchParams.get("type") || "topic"
+const contentPillar = searchParams.get("contentPillar") || ""
+const ideaTags = JSON.parse(searchParams.get("tags") || "[]")
+const sourceData = JSON.parse(searchParams.get("sourceData") || "{}")
+
+// Extract additional data from source_data
+const contentType = sourceData.content_type || ideaType
+const hooks = sourceData.hooks || []
+const keyTakeaways = sourceData.key_takeaways || ideaTags
+const personalStory = sourceData.personal_story || ""
+const hasRichData = Object.keys(sourceData).length > 0
 
   React.useEffect(() => {
     // Simulate AI analysis
@@ -148,9 +159,19 @@ export default function FormulaMatchingPage() {
   }
 
   const handleUseFormula = (formulaId: string) => {
-    // Navigate to Writer Suite with selected formula
-    router.push(`/writer-suite?formulaId=${formulaId}&ideaId=${ideaId}&title=${encodeURIComponent(ideaTitle)}`)
-  }
+  // Navigate to Writer Suite with selected formula and complete idea data
+  const writerSuiteParams = new URLSearchParams({
+    formulaId: formulaId,
+    ideaId: ideaId || '',
+    title: ideaTitle,
+    description: ideaDescription,
+    type: ideaType,
+    contentPillar: contentPillar,
+    tags: JSON.stringify(ideaTags),
+    sourceData: JSON.stringify(sourceData)
+  })
+  router.push(`/writer-suite?${writerSuiteParams.toString()}`)
+}
 
   return (
     <div className="flex h-screen bg-white">
@@ -208,28 +229,60 @@ export default function FormulaMatchingPage() {
 
                 {/* Content Idea Display */}
                 <Card className="bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-emerald-800">Your Content Idea</CardTitle>
-                      <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
-                        {ideaType === "conversation"
-                          ? "Marcus Conversation"
-                          : ideaType === "topic"
-                            ? "Generated Topic"
-                            : "Repurposed Content"}
-                      </Badge>
-                    </div>
-                    <CardDescription className="text-lg font-medium text-emerald-900">
-                      {decodeURIComponent(ideaTitle)}
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-emerald-800">Your Content Idea</CardTitle>
+                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+                      {ideaType === "ai_generated" && sourceData.source_page === "talk_with_marcus"
+                        ? "Marcus Conversation"
+                        : ideaType === "ai_generated"
+                          ? "AI Generated Topic"
+                          : ideaType === "trending"
+                            ? "Trending Topic"
+                            : "Saved Idea"}
+                    </Badge>
+                  </div>
+                  <CardDescription className="text-lg font-medium text-emerald-900">
+                    {decodeURIComponent(ideaTitle)}
+                  </CardDescription>
+                  {ideaDescription && (
+                    <CardDescription className="text-sm text-emerald-700 mt-2">
+                      {decodeURIComponent(ideaDescription)}
                     </CardDescription>
-                  </CardHeader>
-                  <CardContent>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {/* Dynamic tags from actual idea data */}
                     <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline">Business Strategy</Badge>
-                      <Badge variant="outline">Leadership</Badge>
-                      <Badge variant="outline">B2B Audience</Badge>
+                      {contentPillar && (
+                        <Badge variant="outline" className="bg-blue-100 text-blue-700">
+                          {contentPillar.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </Badge>
+                      )}
+                      {ideaTags.slice(0, 3).map((tag: string, index: number) => (
+                        <Badge key={index} variant="outline">
+                          {tag}
+                        </Badge>
+                      ))}
+                      {ideaTags.length > 3 && (
+                        <Badge variant="outline" className="text-gray-500">
+                          +{ideaTags.length - 3} more
+                        </Badge>
+                      )}
                     </div>
-                  </CardContent>
+                    
+                    {/* Show rich data if available */}
+                    {hasRichData && (
+                      <div className="text-sm text-emerald-800">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4" />
+                          <span>Enhanced with Marcus ideation data</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
                 </Card>
               </div>
 
@@ -259,8 +312,11 @@ export default function FormulaMatchingPage() {
                 <Alert className="border-emerald-200 bg-emerald-50">
                   <CheckCircle className="h-4 w-4 text-emerald-600" />
                   <AlertDescription className="text-emerald-800">
-                    <strong>Analysis Complete!</strong> Found {matchedFormulas.length} highly compatible formulas.
-                    Analyzed 47 formulas considering topic type, industry alignment, and audience preferences.
+                    <strong>Analysis Complete!</strong> Found {matchedFormulas.length} highly compatible formulas for "{ideaTitle}".
+                    {hasRichData 
+                      ? `Analyzed using rich ideation data including ${keyTakeaways.length} key takeaways and content structure.`
+                      : "Analyzed based on topic type, content pillar, and available context."
+                    }
                   </AlertDescription>
                 </Alert>
               )}
