@@ -317,15 +317,25 @@ const filteredIdeas = currentIdeas.filter((idea) => {
                             </div>
                             <div className="pt-2 border-t border-gray-100">
                               <Button
-                                onClick={() => {
-                                  onUseThisContent?.(idea)
-                                  setSelectedIdeaForOverlay(null)
-                                }}
-                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                                size="sm"
-                              >
-                                Use This Topic
-                              </Button>
+                              onClick={() => {
+                                // Navigate to formula matching with idea data
+                                const ideaParams = new URLSearchParams({
+                                  ideaId: idea.id,
+                                  title: idea.title,
+                                  description: idea.description || '',
+                                  type: idea.source_type || 'topic',
+                                  contentPillar: idea.content_pillar || '',
+                                  tags: JSON.stringify(idea.tags || []),
+                                  sourceData: JSON.stringify(idea.source_data || {})
+                                })
+                                router.push(`/formula-matching?${ideaParams.toString()}`)
+                                setSelectedIdeaForOverlay(null)
+                              }}
+                              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                              size="sm"
+                            >
+                              Use This Topic
+                            </Button>
                             </div>
                           </div>
                         </ExpandableCard>
@@ -390,14 +400,24 @@ const filteredIdeas = currentIdeas.filter((idea) => {
             <div className="border-t border-gray-200 p-6">
               <Button
                 onClick={() => {
-                  onUseThisContent?.(selectedIdeaForOverlay)
+                  // Navigate to formula matching with overlay idea data
+                  const ideaParams = new URLSearchParams({
+                    ideaId: selectedIdeaForOverlay.id,
+                    title: selectedIdeaForOverlay.title,
+                    description: selectedIdeaForOverlay.description || '',
+                    type: selectedIdeaForOverlay.source_type || 'topic',
+                    contentPillar: selectedIdeaForOverlay.content_pillar || '',
+                    tags: JSON.stringify(selectedIdeaForOverlay.tags || []),
+                    sourceData: JSON.stringify(selectedIdeaForOverlay.source_data || {})
+                  })
+                  router.push(`/formula-matching?${ideaParams.toString()}`)
                   setSelectedIdeaForOverlay(null)
                 }}
                 className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-teal-600 text-white text-lg font-medium rounded-lg hover:bg-teal-700 transition"
               >
                 <ArrowRight className="w-5 h-5" />
                 Use This Topic
-              </Button>
+</Button>
             </div>
           </div>
         </div>
