@@ -29,16 +29,24 @@ import {
   CheckCircle,
   Star,
   Zap,
+  AlertCircle,
 } from "lucide-react"
 import React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { useAuth } from "@/contexts/AuthContext"
+import { getContentFormulas } from "@/lib/supabase"
 
 export default function FormulaMatchingPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user } = useAuth()
   const [selectedFormulas, setSelectedFormulas] = React.useState<string[]>([])
   const [isAnalyzing, setIsAnalyzing] = React.useState(true)
+  const [aiFormulas, setAiFormulas] = React.useState<any[]>([])
+  const [dbFormulas, setDbFormulas] = React.useState<any[]>([])
+  const [enhancedFormulas, setEnhancedFormulas] = React.useState<any[]>([])
+  const [error, setError] = React.useState<string>('')
 
   // Get idea details from URL params
 const ideaId = searchParams.get("ideaId")
@@ -56,101 +64,181 @@ const keyTakeaways = sourceData.key_takeaways || ideaTags
 const personalStory = sourceData.personal_story || ""
 const hasRichData = Object.keys(sourceData).length > 0
 
-  React.useEffect(() => {
-    // Simulate AI analysis
-    const timer = setTimeout(() => {
-      setIsAnalyzing(false)
-    }, 2000)
-    return () => clearTimeout(timer)
-  }, [])
+ React.useEffect(() => {
+  if (user && ideaId) {
+    loadFormulasAndRecommendations()
+  }
+}, [user, ideaId])
 
-  // Sample matched formulas
-  const matchedFormulas = [
-    {
-      id: "1",
-      name: "Problem-Solution-Outcome",
-      category: "Educational",
-      matchScore: 94,
-      successRate: 87,
-      structure: ["Hook with Problem", "Solution Explanation", "Real-world Example", "Call to Action"],
-      description: "Perfect for thought leadership content",
-      isRecommended: true,
-      complexity: "Medium",
-      timeToComplete: "15-20 min",
-      expectedEngagement: "High",
-      whyMatched:
-        "Your content idea focuses on solving business challenges, making this problem-solution structure ideal for maximum impact.",
-      exampleSections: {
-        hook: "Are you struggling with remote team productivity?",
-        solution: "Here's the 3-step framework that increased our team output by 40%",
-        example: "Last month, we implemented this system and saw immediate results...",
-        cta: "What's your biggest remote work challenge? Share below 👇",
-      },
-    },
-    {
-      id: "2",
-      name: "Story-Lesson-Application",
-      category: "Storytelling",
-      matchScore: 89,
-      successRate: 82,
-      structure: ["Personal Story", "Key Lesson", "How to Apply", "Engagement Question"],
-      description: "Great for building personal connection",
+  // Webhook integration functions
+const callFormulaRecommendationAI = async (ideaData: any, sessionId: string) => {
+  const FORMULA_WEBHOOK_URL = process.env.NEXT_PUBLIC_FORMULAS_WEBHOOK_URL || 'https://testcyber.app.n8n.cloud/webhook/your-formula-webhook-id'
+  
+  try {
+    console.log('🚀 Calling Formula AI webhook:', { ideaData, sessionId })
+    
+    const payload = {
+      user_id: user?.id,
+      session_id: sessionId,
+      request_type: 'formula_recommendation',
+      timestamp: new Date().toISOString(),
+      callback_url: `${window.location.origin}/api/formulas/callback`,
+      
+      idea_data: {
+        title: ideaData.title,
+        description: ideaData.description,
+        content_type: ideaData.contentType,
+        content_pillar: ideaData.contentPillar,
+        tags: ideaData.tags,
+        source_data: ideaData.sourceData
+      }
+    }
+
+    const response = await fetch(FORMULA_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+
+    const data = await response.json()
+    console.log('✅ Formula AI response:', data)
+    return data
+  } catch (error) {
+    console.error('❌ Formula AI Error:', error)
+    return { error: 'Failed to get formula recommendations' }
+  }
+}
+
+const pollForFormulaResponse = async (sessionId: string) => {
+  const maxAttempts = 40
+  let attempts = 0
+  
+  const poll = async (): Promise<any> => {
+    try {
+      const response = await fetch(`/api/formulas/callback?session_id=${sessionId}`)
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        console.log('📨 Received formula recommendations:', result.data)
+        return result.data
+      }
+      
+      attempts++
+      if (attempts >= maxAttempts) {
+        console.log('⏱️ Formula recommendation timeout')
+        return null
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      return poll()
+    } catch (error) {
+      console.error('❌ Error polling for formula response:', error)
+      return null
+    }
+  }
+  
+  return poll()
+}
+
+// Load database formulas and get AI recommendations
+const loadFormulasAndRecommendations = async () => {
+  if (!user) return
+  
+  try {
+    setIsAnalyzing(true)
+    setError('')
+    
+    // Load database formulas
+    const { data: formulasData, error: formulasError } = await getContentFormulas(user.id)
+    if (formulasError) throw formulasError
+    
+    setDbFormulas(formulasData || [])
+    
+    // Prepare idea data for AI analysis
+    const ideaData = {
+      title: ideaTitle,
+      description: ideaDescription,
+      contentType: contentType,
+      contentPillar: contentPillar,
+      tags: ideaTags,
+      sourceData: sourceData
+    }
+    
+    // Get AI recommendations
+    const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
+    
+    const aiResponse = await callFormulaRecommendationAI(ideaData, sessionId)
+    
+    if (aiResponse.message === "Workflow was started" || aiResponse.success) {
+      const aiRecommendations = await pollForFormulaResponse(sessionId)
+      
+      if (aiRecommendations && aiRecommendations.recommended_formulas) {
+        setAiFormulas(aiRecommendations.recommended_formulas)
+        
+        // Enhance database formulas with AI recommendations
+        const enhanced = enhanceFormulasWithAI(formulasData || [], aiRecommendations.recommended_formulas)
+        setEnhancedFormulas(enhanced)
+      } else {
+        // No AI recommendations, use database formulas only
+        setEnhancedFormulas(formulasData || [])
+      }
+    } else {
+      throw new Error(aiResponse.error || 'Failed to get recommendations')
+    }
+  } catch (error) {
+    console.error('Error loading formulas:', error)
+    setError('Failed to get formula recommendations. Showing available formulas.')
+    setEnhancedFormulas(dbFormulas)
+  } finally {
+    setIsAnalyzing(false)
+  }
+}
+
+// Enhance database formulas with AI recommendations
+const enhanceFormulasWithAI = (dbFormulas: any[], aiRecommendations: any[]) => {
+  return dbFormulas.map(dbFormula => {
+    const aiMatch = aiRecommendations.find(ai => ai.formula_id === dbFormula.formula_id)
+    
+    if (aiMatch) {
+      return {
+        ...dbFormula,
+        id: dbFormula.formula_id,
+        name: dbFormula.formula_name,
+        description: dbFormula.funnel_purpose || dbFormula.description,
+        category: dbFormula.formula_category || 'Framework',
+        matchScore: Math.round(aiMatch.match_score || 85),
+        successRate: Math.round(dbFormula.effectiveness_score || 80),
+        isRecommended: aiMatch.match_score > 90,
+        whyMatched: aiMatch.why_it_works || 'Good match for your content type',
+        structure: dbFormula.formula_sections?.map((s: any) => s.section_name) || [],
+        complexity: dbFormula.difficulty_level || 'Medium',
+        timeToComplete: `${Math.round((dbFormula.estimated_word_count || 400) / 100) * 5}-${Math.round((dbFormula.estimated_word_count || 400) / 100) * 7} min`,
+        expectedEngagement: aiMatch.match_score > 90 ? 'High' : aiMatch.match_score > 80 ? 'Medium-High' : 'Medium',
+        _aiData: {
+          confidence: aiMatch.match_score,
+          whyPerfect: aiMatch.why_it_works,
+          source: 'AI Analysis'
+        }
+      }
+    }
+    
+    return {
+      ...dbFormula,
+      id: dbFormula.formula_id,
+      name: dbFormula.formula_name,
+      description: dbFormula.funnel_purpose || dbFormula.description,
+      category: dbFormula.formula_category || 'Framework',
+      matchScore: Math.round(dbFormula.effectiveness_score || 75),
+      successRate: Math.round(dbFormula.effectiveness_score || 80),
       isRecommended: false,
-      complexity: "Easy",
-      timeToComplete: "10-15 min",
-      expectedEngagement: "Medium-High",
-      whyMatched:
-        "The conversational nature of your idea pairs well with storytelling approaches that build trust and relatability.",
-      exampleSections: {
-        story: "Three years ago, I made a mistake that cost us $50K...",
-        lesson: "The key insight: always validate assumptions before scaling",
-        application: "Here's how you can avoid this same trap:",
-        question: "Have you ever learned an expensive lesson? What was it?",
-      },
-    },
-    {
-      id: "3",
-      name: "Data-Insight-Action",
-      category: "Analytical",
-      matchScore: 85,
-      successRate: 79,
-      structure: ["Surprising Data Point", "Analysis & Insight", "Actionable Steps", "Results Preview"],
-      description: "Ideal for data-driven professionals",
-      isRecommended: false,
-      complexity: "Hard",
-      timeToComplete: "20-25 min",
-      expectedEngagement: "Medium",
-      whyMatched:
-        "Your industry context suggests an audience that values concrete data and measurable outcomes over abstract concepts.",
-      exampleSections: {
-        data: "73% of SaaS companies fail within their first 2 years",
-        insight: "But the ones that survive share these 3 common traits...",
-        action: "Here's how to implement each trait in your business:",
-        results: "Companies using this approach see 2.3x higher retention rates",
-      },
-    },
-    {
-      id: "4",
-      name: "Question-Answer-Deeper-Dive",
-      category: "Educational",
-      matchScore: 78,
-      successRate: 74,
-      structure: ["Compelling Question", "Direct Answer", "Deeper Explanation", "Next Steps"],
-      description: "Perfect for FAQ-style content",
-      isRecommended: false,
-      complexity: "Easy",
-      timeToComplete: "12-18 min",
-      expectedEngagement: "Medium",
-      whyMatched:
-        "Your content idea addresses common questions in your field, making this Q&A format naturally engaging for your audience.",
-      exampleSections: {
-        question: "Why do most content strategies fail?",
-        answer: "Because they focus on quantity over quality",
-        deeper: "Here's what quality really means in content marketing...",
-        steps: "Start with these 3 quality checkpoints for every piece you create",
-      },
-    },
-  ]
+      whyMatched: 'Available formula from your library',
+      structure: dbFormula.formula_sections?.map((s: any) => s.section_name) || [],
+      complexity: dbFormula.difficulty_level || 'Medium',
+      timeToComplete: `${Math.round((dbFormula.estimated_word_count || 400) / 100) * 5}-${Math.round((dbFormula.estimated_word_count || 400) / 100) * 7} min`,
+      expectedEngagement: 'Medium'
+    }
+  })
+}
 
   const handleFormulaSelect = (formulaId: string) => {
     setSelectedFormulas((prev) =>
@@ -287,6 +375,15 @@ const hasRichData = Object.keys(sourceData).length > 0
               </div>
 
               {/* AI Analysis Section */}
+              {error && (
+                <Alert className="border-red-200 bg-red-50">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">
+                    {error}
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               {isAnalyzing ? (
                 <Card>
                   <CardHeader>
@@ -337,7 +434,7 @@ const hasRichData = Object.keys(sourceData).length > 0
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {matchedFormulas.map((formula) => (
+                    {enhancedFormulas.map((formula) => (
                       <ExpandableCard
                         key={formula.id}
                         id={formula.id}
