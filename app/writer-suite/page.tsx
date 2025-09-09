@@ -166,7 +166,132 @@ const generateAIContent = async (sectionData: any) => {
         role: user?.user_metadata?.role || 'executive'
       }
     }
+   
+    // Main content generation with writing guidance
+const generatePostWithGuidance = async () => {
+  if (!user || !formula || !ideationData) return
+  
+  try {
+    setLoading(true)
     
+    const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
+    
+    const payload = {
+      user_id: user.id,
+      session_id: sessionId,
+      request_type: 'generate_content_with_guidance',
+      timestamp: new Date().toISOString(),
+      callback_url: `${window.location.origin}/api/formulas/content/callback`,
+      
+      selected_formula: {
+        formula_id: formula.formula_id,
+        name: formula.formula_name,
+        category: formula.formula_category,
+        structure: formulaSections.map(s => s.title),
+        sections: formula.formula_sections
+      },
+      
+      ai_recommendation_context: formula._aiData ? {
+        confidence: formula._aiData.confidence,
+        whyPerfect: formula._aiData.whyPerfect,
+        source: formula._aiData.source
+      } : {},
+      
+      user_context: {
+        role: user?.user_metadata?.role || 'executive'
+      },
+      
+      // All ideation data
+      title: ideationData.title,
+      content_type: ideationData.sourceData.content_type || 'personal_story',
+      selected_hook: ideationData.description,
+      selected_hook_index: 0,
+      hooks: [ideationData.description],
+      key_takeaways: ideationData.tags,
+      personal_story: ideationData.sourceData.personal_story || '',
+      pain_points_and_struggles: ideationData.sourceData.pain_points_and_struggles || '',
+      concrete_evidence: ideationData.sourceData.concrete_evidence || '',
+      audience_and_relevance: ideationData.sourceData.audience_and_relevance || '',
+      
+      // Current variables filled in by user
+      template_variables: variables
+    }
+    
+    console.log('🚀 Generating complete post with guidance:', payload)
+    
+    const response = await fetch('https://testcyber.app.n8n.cloud/webhook/1f6e3c3f-b68c-4f71-b83f-7330b528db58', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    
+    const data = await response.json()
+    
+    if (data.message === "Workflow was started") {
+      console.log('🔄 Content generation started, polling for response...')
+      const contentResponse = await pollForContentResponse(sessionId)
+      
+      if (contentResponse && contentResponse !== 'TIMEOUT' && contentResponse !== 'ERROR') {
+        console.log('✅ Received complete content and guidance:', contentResponse)
+        
+        // Update the preview with generated content
+        if (contentResponse.guidance?.writing_guidance_sections) {
+          const generatedVariables: Record<string, string> = {}
+          
+          contentResponse.guidance.writing_guidance_sections.forEach((section: any, index: number) => {
+            if (section.section_content) {
+              // Map section content to variables
+              const sectionData = formulaSections[index]
+              if (sectionData?.variables?.length > 0) {
+                generatedVariables[sectionData.variables[0]] = section.section_content
+              }
+            }
+          })
+          
+          setVariables(prev => ({ ...prev, ...generatedVariables }))
+        }
+        
+        return contentResponse
+      }
+    }
+    
+    return null
+  } catch (error) {
+    console.error('Error generating post with guidance:', error)
+    return null
+  } finally {
+    setLoading(false)
+  }
+}
+
+// Polling function for content response
+const pollForContentResponse = async (sessionId: string) => {
+  const maxAttempts = 80
+  let attempts = 0
+  
+  const poll = async (): Promise<any> => {
+    try {
+      const response = await fetch(`/api/formulas/content/callback?session_id=${sessionId}`)
+      const result = await response.json()
+      
+      if (result.success && result.data && result.type === 'final') {
+        return result.data
+      }
+      
+      attempts++
+      if (attempts >= maxAttempts) {
+        return 'TIMEOUT'
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      return poll()
+    } catch (error) {
+      return 'ERROR'
+    }
+  }
+  
+  return poll()
+}
     const response = await fetch('https://testcyber.app.n8n.cloud/webhook/1f6e3c3f-b68c-4f71-b83f-7330b528db58', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -228,38 +353,43 @@ const generateAIContent = async (sectionData: any) => {
   ]
 
   const getGuidanceContent = (guidanceId: string) => {
-    const sectionTitle = currentSectionData?.title || "Current Section"
+  const sectionTitle = currentSectionData?.title || "Current Section"
+  const sectionGuidance = currentSectionData?.section_guidelines || ""
+  const psychPurpose = currentSectionData?.psychological_purpose || ""
+  
+  const content = {
+    "ai-enhancement": {
+      title: "AI Enhancement",
+      content: `Enhance your ${sectionTitle.toLowerCase()} with AI-powered suggestions. ${sectionGuidance}`,
+    },
+    "why-matters": {
+      title: "Why This Matters", 
+      content: psychPurpose || `Your ${sectionTitle.toLowerCase()} needs to immediately show value to your audience. Focus on the specific problem this solves and why your readers should care right now.`,
+    },
+    "story-essentials": {
+      title: "Story Essentials",
+      content: sectionGuidance || `For your ${sectionTitle.toLowerCase()}, include a relatable character, clear conflict, and satisfying resolution.`,
+    },
+    "writing-techniques": {
+      title: "Writing Techniques", 
+      content: `Use short, punchy sentences for your ${sectionTitle.toLowerCase()}. Target word count: ${currentSectionData?.word_count_target || 50} words.`,
+    },
+    "know-reader": {
+      title: "Know Your Reader",
+      content: `Your audience for this ${sectionTitle.toLowerCase()} likely struggles with time constraints and information overload. Speak directly to their pain points.`,
+    },
+    "emotional-arc": {
+      title: "Emotional Arc",
+      content: psychPurpose || `Take readers from curiosity to understanding in your ${sectionTitle.toLowerCase()}.`,
+    },
+    "voice-tone": {
+      title: "Voice and Tone",
+      content: `Maintain a professional yet approachable tone in your ${sectionTitle.toLowerCase()}. Be confident without being arrogant.`,
+    },
+  }
 
-    const content = {
-      "ai-enhancement": {
-        title: "AI Enhancement",
-        content: `Enhance your ${sectionTitle.toLowerCase()} with AI-powered suggestions. Get real-time improvements for clarity, engagement, and impact based on successful LinkedIn posts.`,
-      },
-      "why-matters": {
-        title: "Why This Matters",
-        content: `Your ${sectionTitle.toLowerCase()} needs to immediately show value to your audience. Focus on the specific problem this solves and why your readers should care right now.`,
-      },
-      "story-essentials": {
-        title: "Story Essentials",
-        content: `For your ${sectionTitle.toLowerCase()}, include a relatable character, clear conflict, and satisfying resolution. Use specific details and emotional hooks to keep readers engaged.`,
-      },
-      "writing-techniques": {
-        title: "Writing Techniques",
-        content: `Use short, punchy sentences for your ${sectionTitle.toLowerCase()}. Start with action words, include specific numbers, and break up text with line breaks for better readability.`,
-      },
-      "know-reader": {
-        title: "Know Your Reader",
-        content: `Your audience for this ${sectionTitle.toLowerCase()} likely struggles with time constraints and information overload. Speak directly to their pain points and use language they use.`,
-      },
-      "emotional-arc": {
-        title: "Emotional Arc",
-        content: `Take readers from curiosity to understanding in your ${sectionTitle.toLowerCase()}. Start with intrigue, build tension around the problem, then provide relief with your solution.`,
-      },
-      "voice-tone": {
-        title: "Voice and Tone",
-        content: `Maintain a professional yet approachable tone in your ${sectionTitle.toLowerCase()}. Be confident without being arrogant, and helpful without being condescending.`,
-      },
-    }
+  return content[guidanceId as keyof typeof content] || content["why-matters"]
+}
 
     return content[guidanceId as keyof typeof content] || content["why-matters"]
   }
@@ -509,29 +639,47 @@ if (!formula) {
                   <Card>
                     <CardContent className="pt-6">
                       <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentSection(Math.max(1, currentSection - 1))}
-                          disabled={currentSection === 1}
-                          className="flex-1"
-                        >
-                          <ArrowLeft className="h-4 w-4 mr-1" />
-                          Previous
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => setCurrentSection(Math.min(5, currentSection + 1))}
-                          disabled={currentSection === 5}
-                          className="bg-emerald-600 hover:bg-emerald-700 flex-1"
-                        >
-                          Next
-                          <ArrowRight className="h-4 w-4 ml-1" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={() => setCurrentSection(Math.max(1, currentSection - 1))}
+    disabled={currentSection === 1}
+    className="flex-1"
+  >
+    <ArrowLeft className="h-4 w-4 mr-1" />
+    Previous
+  </Button>
+  {currentSection === formulaSections.length ? (
+    <Button
+      size="sm"
+      onClick={generatePostWithGuidance}
+      disabled={loading}
+      className="bg-emerald-600 hover:bg-emerald-700 flex-1"
+    >
+      {loading ? (
+        <>
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+          Generating...
+        </>
+      ) : (
+        <>
+          <Sparkles className="h-4 w-4 mr-1" />
+          Generate Post
+        </>
+      )}
+    </Button>
+  ) : (
+    <Button
+      size="sm"
+      onClick={() => setCurrentSection(Math.min(formulaSections.length, currentSection + 1))}
+      disabled={currentSection === formulaSections.length}
+      className="bg-emerald-600 hover:bg-emerald-700 flex-1"
+    >
+      Next
+      <ArrowRight className="h-4 w-4 ml-1" />
+    </Button>
+  )}
+</div>
 
                 <div className="space-y-6">
                   <Card>
