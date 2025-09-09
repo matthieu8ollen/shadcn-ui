@@ -90,7 +90,7 @@ const callFormulaRecommendationAI = async (ideaData: any, sessionId: string) => 
   session_id: sessionId,
   request_type: 'generate_content_with_guidance',
   timestamp: new Date().toISOString(),
-  callback_url: `${window.location.origin}/api/formulas/content/callback`,
+  callback_url: `${window.location.origin}/api/formulas/callback`,
       
       title: ideaData.title,
 content_type: ideaData.contentType || 'personal_story',
@@ -123,44 +123,39 @@ user_context: {
 }
 
 const pollForFormulaResponse = async (sessionId: string) => {
-  const maxAttempts = 40
+  const maxAttempts = 80 // Same as working app
   let attempts = 0
   
   const poll = async (): Promise<any> => {
     try {
-      const response = await fetch(`/api/formulas/content/callback?session_id=${sessionId}`)
+      const response = await fetch(`/api/formulas/callback?session_id=${sessionId}`)
       const result = await response.json()
       
-      if (result.success && result.data) {
+      // Match working app logic exactly
+      if (result.success && result.data && result.type === 'final') {
         console.log('📨 Received formula recommendations:', result.data)
-        // Check if data has the expected structure
-        if (result.data.recommended_formulas || result.data.formulas) {
-          return result.data
-        }
-        // Return the data as-is if it has a different structure
-        return { recommended_formulas: [] }
+        return result.data
       }
       
       attempts++
       if (attempts >= maxAttempts) {
         console.log('⏱️ Formula recommendation timeout')
-        return null
+        return 'TIMEOUT'
       }
       
       await new Promise(resolve => setTimeout(resolve, 1500))
       return poll()
     } catch (error) {
       console.error('❌ Error polling for formula response:', error)
-      return null
+      return 'ERROR'
     }
   }
   
   return poll()
 }
-
 // Load database formulas and get AI recommendations
 const loadFormulasAndRecommendations = async () => {
-  if (!user) return
+  if (!user || isAnalyzing) return // Prevent multiple calls
   
   try {
     setIsAnalyzing(true)
