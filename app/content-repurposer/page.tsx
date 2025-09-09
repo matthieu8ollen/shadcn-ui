@@ -1,7 +1,10 @@
 "use client"
 
+import { useAuth } from "@/contexts/AuthContext"
+import { createIdeationSession, updateIdeationSession } from "@/lib/supabase"
 import { useState } from "react"
 import Link from "next/link"
+import { useEffect } from "react"
 import { SidebarNavigation } from "@/components/sidebar-navigation"
 import { StickyBanner } from "@/components/ui/sticky-banner"
 import { TypingAnimation } from "@/components/magicui/typing-animation"
@@ -22,52 +25,276 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Upload, FileText, Mic, Youtube, Linkedin, Copy, Sparkles, Home, RotateCcw } from "lucide-react"
 
+// Type definitions
+type RepurposeType = 'blog' | 'voice' | 'youtube' | 'linkedin'
+type ProcessingStage = 'input' | 'processing' | 'completed' | 'error'
+
+interface BlogInputData {
+  content: string;
+  target_audience?: string;
+  content_preferences?: string[];
+  user_role?: string;
+}
+
+// Repurpose configuration
+const REPURPOSE_CONFIG = {
+  WEBHOOK_URL: process.env.NEXT_PUBLIC_REPURPOSE_WEBHOOK_URL || 'https://testcyber.app.n8n.cloud/webhook/bf05add7-f1b0-483d-8765-2c0475005645',
+  CALLBACK_URL: '/api/repurpose/callback',
+  POLLING: {
+    MAX_ATTEMPTS: 80,
+    INTERVAL_MS: 1500,
+    FALLBACK_MESSAGE_AFTER: 40
+  }
+}
+
+// Type guard functions
+const isBlogInputData = (input: any): input is BlogInputData => {
+  return input && 
+         typeof input === 'object' && 
+         typeof input.content === 'string' && 
+         !('name' in input) && 
+         !('size' in input) && 
+         !('type' in input);
+};
+
+const isFile = (input: any): input is File => {
+  return input instanceof File || 
+         (input && 
+          typeof input === 'object' && 
+          'name' in input && 
+          'size' in input && 
+          'type' in input);
+};
+
 export default function ContentRepurposerPage() {
-  const [activeTab, setActiveTab] = useState("blog")
+  const { user } = useAuth()
+  const [activeTab, setActiveTab] = useState<RepurposeType>("blog")
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [generatedPosts, setGeneratedPosts] = useState<any[]>([])
+  
+  // New state variables for webhook integration
+  const [processingStage, setProcessingStage] = useState<ProcessingStage>('input')
+  const [currentStatus, setCurrentStatus] = useState('')
+  const [currentError, setCurrentError] = useState('')
+  const [showRetryButton, setShowRetryButton] = useState(false)
+  const [lastProcessedInput, setLastProcessedInput] = useState<string | File | BlogInputData | null>(null)
+  const [currentSession, setCurrentSession] = useState<any>(null)
+  const [resultsData, setResultsData] = useState<any>(null)
+  const [originalContentData, setOriginalContentData] = useState<string>('')
+  
+  // Input states for each tab
+  const [blogContent, setBlogContent] = useState('')
+  const [youtubeUrl, setYoutubeUrl] = useState('')
+  const [linkedinUrl, setLinkedinUrl] = useState('')
+  const [linkedinContent, setLinkedinContent] = useState('')
+
+  // Webhook integration functions
+  const callRepurposeAI = async (input: string | File | BlogInputData, repurposeType: RepurposeType, sessionId: string) => {
+    try {
+      console.log('🚀 Calling Repurpose AI webhook:', { input, repurposeType, sessionId });
+      
+      let payload: any = {
+        repurpose_type: repurposeType,
+        user_id: user?.id,
+        session_id: sessionId,
+        callback_url: `${window.location.origin}${REPURPOSE_CONFIG.CALLBACK_URL}`,
+        timestamp: new Date().toISOString()
+      };
+
+      if (typeof input === 'string') {
+        if (repurposeType === 'blog') {
+          payload.content = input;
+        } else {
+          payload.source_url = input;
+        }
+      } else if (isBlogInputData(input)) {
+        payload.content = input.content;
+        if (input.target_audience) payload.target_audience = input.target_audience;
+        if (input.content_preferences) payload.content_preferences = input.content_preferences;
+        if (input.user_role) payload.user_role = input.user_role;
+      } else if (isFile(input)) {
+        payload.file_name = input.name;
+        payload.file_size = input.size;
+        payload.file_reference = `temp_${sessionId}_${input.name}`;
+      }
+
+      const response = await fetch(REPURPOSE_CONFIG.WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+      console.log('✅ Repurpose AI response:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ Repurpose AI Error:', error);
+      return { error: 'Processing failed, please try again' };
+    }
+  };
+
+  const pollForRepurposeResponse = async (sessionId: string) => {
+    const maxAttempts = REPURPOSE_CONFIG.POLLING.MAX_ATTEMPTS;
+    let attempts = 0;
+    
+    const poll = async (): Promise<any> => {
+      try {
+        const response = await fetch(`${REPURPOSE_CONFIG.CALLBACK_URL}?session_id=${sessionId}`);
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+          console.log('📨 Received repurpose response:', result.data);
+          return result.data;
+        }
+        
+        attempts++;
+        if (attempts >= maxAttempts) {
+          console.log('⏱️ Repurpose response timeout');
+          return 'TIMEOUT';
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, REPURPOSE_CONFIG.POLLING.INTERVAL_MS));
+        return poll();
+      } catch (error) {
+        console.error('❌ Error polling for repurpose response:', error);
+        return 'ERROR';
+      }
+    };
+    
+    return poll();
+  };
 
   const handleProcess = async () => {
-    setIsProcessing(true)
-    setProgress(0)
+    if (!user) return;
 
-    // Simulate processing
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          setIsProcessing(false)
-          // Generate mock LinkedIn posts
-          setGeneratedPosts([
-            {
-              id: 1,
-              angle: "Educational",
-              content:
-                "🎯 Just discovered 3 game-changing insights about content strategy:\n\n1. Quality beats quantity every time\n2. Authentic storytelling drives engagement\n3. Consistency builds trust\n\nWhich resonates most with your experience?",
-              engagement: "High",
-            },
-            {
-              id: 2,
-              angle: "Personal Story",
-              content:
-                "Yesterday, I learned something that completely changed my perspective on content creation...\n\nIt's not about having the perfect strategy.\nIt's about being genuinely helpful to your audience.\n\nWhat's one lesson that transformed your approach?",
-              engagement: "Medium",
-            },
-            {
-              id: 3,
-              angle: "Question-Based",
-              content:
-                "Quick question for content creators:\n\nWhat's your biggest challenge right now?\n\n• Finding time to create\n• Coming up with ideas\n• Measuring success\n• Building an audience\n\nDrop your answer below 👇",
-              engagement: "High",
-            },
-          ])
-          return 100
+    // Get current input based on active tab
+    let input: string | File | BlogInputData;
+    let hasValidInput = false;
+
+    switch (activeTab) {
+      case 'blog':
+        if (blogContent.trim()) {
+          input = blogContent.trim();
+          hasValidInput = true;
         }
-        return prev + 10
-      })
-    }, 200)
-  }
+        break;
+      case 'youtube':
+        if (youtubeUrl.trim()) {
+          input = youtubeUrl.trim();
+          hasValidInput = true;
+        }
+        break;
+      case 'linkedin':
+        if (linkedinUrl.trim()) {
+          input = linkedinUrl.trim();
+          hasValidInput = true;
+        } else if (linkedinContent.trim()) {
+          input = linkedinContent.trim();
+          hasValidInput = true;
+        }
+        break;
+      default:
+        break;
+    }
+
+    if (!hasValidInput) {
+      setCurrentError('Please provide content to repurpose');
+      return;
+    }
+
+    setCurrentError('');
+    setLastProcessedInput(input!);
+    
+    try {
+      setProcessingStage('processing');
+      setIsProcessing(true);
+      setProgress(0);
+      
+      const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      
+      // Create ideation session
+      const { data: session, error } = await createIdeationSession({
+        user_id: user.id,
+        page_type: 'repurpose_content',
+        session_data: {
+          repurpose_type: activeTab,
+          processing_status: 'processing',
+          original_content: typeof input! === 'string' ? input! : 'File upload'
+        },
+        status: 'in_progress'
+      });
+
+      if (error) throw error;
+      setCurrentSession(session);
+
+      // Start progress simulation
+      const progressInterval = setInterval(() => {
+        setProgress(prev => prev < 90 ? prev + 5 : prev);
+      }, 1000);
+
+      // Call backend webhook
+      setCurrentStatus('Analyzing your content...');
+      const response = await callRepurposeAI(input!, activeTab, sessionId);
+
+      if (response.message === "Workflow was started" || response.success) {
+        setCurrentStatus('Generating LinkedIn content variations...');
+        
+        const aiResponse = await pollForRepurposeResponse(sessionId);
+        
+        clearInterval(progressInterval);
+        setProgress(100);
+        
+        if (aiResponse === 'TIMEOUT') {
+          setCurrentStatus('');
+          setProcessingStage('error');
+          setCurrentError("Processing is taking longer than expected. Please try again.");
+          setShowRetryButton(true);
+        } else if (aiResponse === 'ERROR') {
+          setCurrentStatus('');
+          setProcessingStage('error');
+          setCurrentError("Something went wrong while processing your content. Please try again.");
+          setShowRetryButton(true);
+        } else {
+          // Success - display results
+          setProcessingStage('completed');
+          setResultsData(aiResponse);
+          setOriginalContentData(typeof input! === 'string' ? input! : 'File upload');
+          
+          // Convert to display format
+          if (aiResponse.generated_ideas && aiResponse.generated_ideas.length > 0) {
+            const posts = aiResponse.generated_ideas.map((idea: any, index: number) => ({
+              id: index + 1,
+              angle: idea.angle || 'Generated Content',
+              content: idea.content || idea.post_content || '',
+              engagement: 'High',
+              takeaways: idea.key_takeaways || []
+            }));
+            setGeneratedPosts(posts);
+          }
+        }
+      } else {
+        throw new Error(response.error || 'Failed to start processing');
+      }
+    } catch (error) {
+      console.error('Error in handleProcess:', error);
+      setProcessingStage('error');
+      setCurrentError('Failed to process content. Please try again.');
+      setShowRetryButton(true);
+    } finally {
+      setIsProcessing(false);
+      setCurrentStatus('');
+    }
+  };
+
+  const handleRetry = () => {
+    setShowRetryButton(false);
+    setCurrentError('');
+    setCurrentStatus('');
+    if (lastProcessedInput) {
+      handleProcess();
+    }
+  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -142,7 +369,12 @@ export default function ContentRepurposerPage() {
                   <CardContent className="space-y-4">
                     <div>
                       <label className="text-sm font-medium mb-2 block">Paste content directly</label>
-                      <Textarea placeholder="Paste your article content here..." className="min-h-[200px]" />
+                      <Textarea 
+                        placeholder="Paste your article content here..." 
+                        className="min-h-[200px]"
+                        value={blogContent}
+                        onChange={(e) => setBlogContent(e.target.value)}
+                      />
                     </div>
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
                       <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -188,7 +420,11 @@ export default function ContentRepurposerPage() {
                   <CardContent className="space-y-4">
                     <div>
                       <label className="text-sm font-medium mb-2 block">YouTube URL</label>
-                      <Input placeholder="https://youtube.com/watch?v=..." />
+                      <Input 
+                        placeholder="https://youtube.com/watch?v=..." 
+                        value={youtubeUrl}
+                        onChange={(e) => setYoutubeUrl(e.target.value)}
+                      />
                     </div>
                     <div className="bg-gray-50 rounded-lg p-4">
                       <p className="text-sm text-gray-600 mb-2">Video preview will appear here</p>
@@ -209,11 +445,20 @@ export default function ContentRepurposerPage() {
                   <CardContent className="space-y-4">
                     <div>
                       <label className="text-sm font-medium mb-2 block">LinkedIn Post URL</label>
-                      <Input placeholder="https://linkedin.com/posts/..." />
+                      <Input 
+                        placeholder="https://linkedin.com/posts/..." 
+                        value={linkedinUrl}
+                        onChange={(e) => setLinkedinUrl(e.target.value)}
+                      />
                     </div>
                     <div>
                       <label className="text-sm font-medium mb-2 block">Or paste post content</label>
-                      <Textarea placeholder="Paste LinkedIn post content here..." className="min-h-[150px]" />
+                      <Textarea 
+                        placeholder="Paste LinkedIn post content here..." 
+                        className="min-h-[150px]"
+                        value={linkedinContent}
+                        onChange={(e) => setLinkedinContent(e.target.value)}
+                      />
                     </div>
                   </CardContent>
                 </Card>
@@ -240,6 +485,21 @@ export default function ContentRepurposerPage() {
               </Button>
             </div>
 
+            {currentError && (
+              <Card className="mt-8 border-red-200 bg-red-50">
+                <CardHeader>
+                  <CardTitle className="text-red-800">Processing Error</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-red-700 mb-4">{currentError}</p>
+                  {showRetryButton && (
+                    <Button onClick={handleRetry} variant="outline" className="text-red-600 border-red-300">
+                      Try Again
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )}
             {isProcessing && (
               <Card className="mt-8">
                 <CardHeader>
@@ -249,6 +509,9 @@ export default function ContentRepurposerPage() {
                 <CardContent>
                   <Progress value={progress} className="w-full" />
                   <p className="text-sm text-gray-600 mt-2">{progress}% complete</p>
+                  {currentStatus && (
+                    <p className="text-sm text-blue-600 mt-1">{currentStatus}</p>
+                  )}
                 </CardContent>
               </Card>
             )}
