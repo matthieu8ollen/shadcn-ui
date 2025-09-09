@@ -39,6 +39,7 @@ const [conversationContext, setConversationContext] = React.useState({
   topic_focus: ''
 })
 const [currentStatus, setCurrentStatus] = React.useState('')
+const [waitingForClarification, setWaitingForClarification] = React.useState(false)
 
   // Webhook integration functions
 const callMarcusAI = async (userInput: string, conversationContext: any, contentPreference: string, sessionId: string) => {
@@ -127,6 +128,7 @@ const pollForAIResponse = async (sessionId: string) => {
   setMessages(prev => [...prev, newMessage])
   setInputValue("")
   setIsLoading(true)
+  setWaitingForClarification(false)
 
   try {
     // Create or update ideation session
@@ -156,23 +158,58 @@ const pollForAIResponse = async (sessionId: string) => {
       let responseContent = ''
       
       if (aiResponse.response_type === 'topic_ready' && aiResponse.topics?.length > 0) {
-        const topic = aiResponse.topics[0]
-        responseContent = `Great! I've developed a content idea for you:\n\n**${topic.title}**\n\n${topic.key_takeaways?.join('\n') || ''}\n\nWould you like me to save this to your Ideas Library?`
-      } else if (aiResponse.response_type === 'clarification' && aiResponse.questions) {
-        responseContent = aiResponse.message + '\n\n' + aiResponse.questions.join('\n')
-      } else {
-        responseContent = aiResponse.message || "I'm thinking about your request..."
-      }
-
-      const marcusMessage = {
-        id: messages.length + 2,
-        sender: "Marcus",
-        content: responseContent,
-        timestamp: new Date(),
-        isUser: false,
-      }
-      
-      setMessages(prev => [...prev, marcusMessage])
+  const topic = aiResponse.topics[0]
+  responseContent = `Great! I've developed a content idea for you:\n\n**${topic.title}**\n\n${topic.key_takeaways?.join('\n') || ''}\n\nWould you like me to save this to your Ideas Library?`
+  
+  const marcusMessage = {
+    id: messages.length + 2,
+    sender: "Marcus",
+    content: responseContent,
+    timestamp: new Date(),
+    isUser: false,
+  }
+  setMessages(prev => [...prev, marcusMessage])
+  setWaitingForClarification(false)
+  
+} else if (aiResponse.response_type === 'clarification' && aiResponse.questions) {
+  // First: Send the main message
+  const mainMessage = {
+    id: messages.length + 2,
+    sender: "Marcus",
+    content: aiResponse.message,
+    timestamp: new Date(),
+    isUser: false,
+  }
+  setMessages(prev => [...prev, mainMessage])
+  
+  // Then: Send follow-up questions after delay and WAIT
+  setTimeout(() => {
+    const questionsMessage = {
+      id: messages.length + 3,
+      sender: "Marcus", 
+      content: aiResponse.questions.join('\n\n'),
+      timestamp: new Date(),
+      isUser: false,
+    }
+    setMessages(prev => [...prev, questionsMessage])
+    setWaitingForClarification(true) // Now wait for user response!
+  }, 1500)
+  
+  return // Don't continue processing - wait for user input
+  
+} else {
+  responseContent = aiResponse.message || "I'm thinking about your request..."
+  
+  const marcusMessage = {
+    id: messages.length + 2,
+    sender: "Marcus",
+    content: responseContent,
+    timestamp: new Date(),
+    isUser: false,
+  }
+  setMessages(prev => [...prev, marcusMessage])
+  setWaitingForClarification(false)
+}
     } else {
       // Fallback message
       const errorMessage = {
