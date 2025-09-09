@@ -191,8 +191,15 @@ const loadFormulasAndRecommendations = async () => {
         setAiFormulas(aiRecommendations.recommended_formulas)
         
         // Enhance database formulas with AI recommendations
-        const enhanced = enhanceFormulasWithAI(formulasData || [], aiRecommendations.recommended_formulas)
-        setEnhancedFormulas(enhanced)
+        // Only show AI-recommended formulas, not all database formulas
+const recommendedFormulaIds = aiRecommendations.recommended_formulas.map((ai: any) => ai.formula_id)
+const filteredDbFormulas = formulasData?.filter(dbFormula => 
+  recommendedFormulaIds.includes(dbFormula.formula_id)
+) || []
+
+// Enhance only the recommended formulas
+const enhanced = enhanceFormulasWithAI(filteredDbFormulas, aiRecommendations.recommended_formulas)
+setEnhancedFormulas(enhanced)
       } else {
         // No AI recommendations, use database formulas only
         setEnhancedFormulas(formulasData || [])
