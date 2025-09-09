@@ -65,7 +65,7 @@ const personalStory = sourceData.personal_story || ""
 const hasRichData = Object.keys(sourceData).length > 0
 
  React.useEffect(() => {
-  if (user && ideaId && !isAnalyzing) {
+  if (user && ideaId) {
     loadFormulasAndRecommendations()
   }
 }, [user, ideaId])
