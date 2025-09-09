@@ -168,6 +168,7 @@ const pollForAIResponse = async (sessionId: string) => {
   setSelectedHookIndex(0)
   setShowTopicOverlay(true)
   setWaitingForClarification(false)
+  return
   
 } else if (aiResponse.response_type === 'clarification' && aiResponse.questions) {
   // First: Send the main message
