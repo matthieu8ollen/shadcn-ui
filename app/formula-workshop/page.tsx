@@ -109,7 +109,7 @@ export default function FormulaWorkshopPage() {
   const [searchTerm, setSearchTerm] = React.useState('')
   const [categoryFilter, setCategoryFilter] = React.useState('all')
 
-  // Load formulas from database
+// Load formulas from database
   const loadFormulas = async () => {
     if (!user) return
     
@@ -117,27 +117,53 @@ export default function FormulaWorkshopPage() {
       setLoading(true)
       setError('')
       
+      // Fetch both formulas and sections
       const { data: formulasData, error: formulasError } = await getContentFormulas()
+      const { data: sectionsData, error: sectionsError } = await getFormulaSections()
       
       if (formulasError) {
         throw formulasError
       }
       
+      if (sectionsError) {
+        console.warn('Could not load formula sections:', sectionsError)
+      }
+      
+      // Group sections by formula_id
+      const sectionsByFormula = sectionsData?.reduce((acc: any, section: any) => {
+        if (!acc[section.formula_id]) {
+          acc[section.formula_id] = []
+        }
+        acc[section.formula_id].push(section)
+        return acc
+      }, {}) || {}
+      
       // Transform database format to component format
-      const transformedFormulas = formulasData?.map((formula: any) => ({
-        id: formula.id,
-        name: formula.formula_name,
-        category: formula.category || 'Classic',
-        successRate: Math.round(formula.effectiveness_score || 85),
-        usageCount: Math.floor(Math.random() * 500) + 50, // Mock usage for now
-        description: formula.description || 'Proven content formula',
-        sections: [], // Will be loaded separately if needed
-        icon: getCategoryIcon(formula.category),
-        difficulty: formula.difficulty_level || 'intermediate',
-        targetRole: formula.primary_target_role || 'General',
-        isActive: formula.is_active !== false,
-        isPremium: formula.is_premium || false
-      })) || []
+      const transformedFormulas = formulasData?.map((formula: any) => {
+        const formulaSections = sectionsByFormula[formula.formula_id] || []
+        // Sort sections by section_order
+        const sortedSections = formulaSections.sort((a: any, b: any) => a.section_order - b.section_order)
+        
+        return {
+          id: formula.formula_id, // Use formula_id as the universal ID
+          name: formula.formula_name,
+          category: formula.formula_category || formula.category || 'Framework',
+          successRate: Math.round(formula.effectiveness_score || 85),
+          usageCount: Math.floor(Math.random() * 500) + 50, // Mock usage for now
+          description: formula.funnel_purpose || formula.description || 'Proven content formula',
+          contentIntent: formula.content_intent,
+          targetAudience: formula.target_audience,
+          sectionCount: formula.section_count || sortedSections.length,
+          sections: sortedSections.map((section: any) => section.section_name),
+          sectionsDetailed: sortedSections, // Keep full section data for detailed view
+          icon: getCategoryIcon(formula.formula_category || formula.category),
+          difficulty: formula.difficulty_level || 'intermediate',
+          targetRole: formula.primary_target_role || formula.target_audience || 'General',
+          isActive: formula.is_active !== false,
+          isPremium: formula.is_premium || false,
+          formulaId: formula.formula_id // Keep original formula_id for reference
+        }
+      }) || []
       
       setFormulas(transformedFormulas)
     } catch (err) {
@@ -147,7 +173,6 @@ export default function FormulaWorkshopPage() {
       setLoading(false)
     }
   }
-
   const handleCreateFormula = async () => {
     if (!user || !formulaName.trim() || !formulaCategory) return
     
@@ -488,37 +513,60 @@ What's your biggest content creation challenge? Drop it in the comments 👇`)
                       key={formula.id}
                       title={formula.name}
                       description={formula.description}
-                      expandedContent={
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Success Rate</span>
-                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
-                              {formula.successRate}%
-                            </Badge>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Usage Count</span>
-                            <span className="font-medium">{formula.usageCount}</span>
-                          </div>
-                          <div className="space-y-2">
-                            <span className="text-sm font-medium text-gray-700">Sections:</span>
-                            <div className="flex flex-wrap gap-1">
-                              {formula.sections.map((section, index) => (
-                                <Badge key={index} variant="outline" className="text-xs">
-                                  {section}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            className="w-full bg-emerald-600 hover:bg-emerald-700"
-                            onClick={() => handleUseFormula(formula)}
-                          >
-                            Use This Formula
-                          </Button>
+                     expandedContent={
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Success Rate</span>
+                          <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+                            {formula.successRate}%
+                          </Badge>
                         </div>
-                      }
+                        
+                        {formula.contentIntent && (
+                          <div className="text-sm">
+                            <span className="text-gray-600">Intent:</span>
+                            <span className="font-medium ml-2">{formula.contentIntent}</span>
+                          </div>
+                        )}
+                        
+                        {formula.targetAudience && (
+                          <div className="text-sm">
+                            <span className="text-gray-600">Target:</span>
+                            <span className="font-medium ml-2">{formula.targetAudience}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Sections</span>
+                          <span className="font-medium">{formula.sectionCount}</span>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <span className="text-sm font-medium text-gray-700">Structure:</span>
+                          <div className="space-y-1">
+                            {formula.sections.slice(0, 3).map((section: string, index: number) => (
+                              <div key={index} className="text-xs text-gray-600 flex items-center">
+                                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2"></div>
+                                {section}
+                              </div>
+                            ))}
+                            {formula.sections.length > 3 && (
+                              <div className="text-xs text-gray-500 ml-3.5">
+                                +{formula.sections.length - 3} more sections
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <Button
+                          size="sm"
+                          className="w-full bg-emerald-600 hover:bg-emerald-700"
+                          onClick={() => handleUseFormula(formula)}
+                        >
+                          Use This Formula
+                        </Button>
+                      </div>
+                    }
                       className={`cursor-pointer transition-all ${selectedFormula === formula.id ? "ring-2 ring-emerald-500" : ""}`}
                     />
                   ))}
@@ -540,6 +588,8 @@ What's your biggest content creation challenge? Drop it in the comments 👇`)
                         <SelectItem value="personal">Personal</SelectItem>
                         <SelectItem value="framework">Framework</SelectItem>
                         <SelectItem value="business">Business</SelectItem>
+                        <SelectItem value="story">Story</SelectItem>
+                        <SelectItem value="data">Data</SelectItem>
                       </SelectContent>
                     </Select>
                     <Select defaultValue="effectiveness">
