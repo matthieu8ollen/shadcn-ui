@@ -47,6 +47,7 @@ export default function FormulaMatchingPage() {
   const [dbFormulas, setDbFormulas] = React.useState<any[]>([])
   const [enhancedFormulas, setEnhancedFormulas] = React.useState<any[]>([])
   const [error, setError] = React.useState<string>('')
+  const [hasLoadedOnce, setHasLoadedOnce] = React.useState(false)
 
   // Get idea details from URL params
 const ideaId = searchParams.get("ideaId")
@@ -155,9 +156,10 @@ const pollForFormulaResponse = async (sessionId: string) => {
 }
 // Load database formulas and get AI recommendations
 const loadFormulasAndRecommendations = async () => {
-  if (!user || isAnalyzing) return // Prevent multiple calls
+  if (!user || hasLoadedOnce) return
   
   try {
+    setHasLoadedOnce(true)
     setIsAnalyzing(true)
     setError('')
     
