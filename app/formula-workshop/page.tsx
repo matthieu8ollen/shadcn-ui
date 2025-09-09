@@ -4,7 +4,6 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useState, useEffect } from "react"
 import { 
   getContentFormulas, 
-  getFormulaSections, 
   createContentFormula, 
   updateContentFormula 
 } from "@/lib/supabase"
@@ -117,40 +116,29 @@ export default function FormulaWorkshopPage() {
       setLoading(true)
       setError('')
       
-      // Fetch both formulas and sections
-      const { data: formulasData, error: formulasError } = await getContentFormulas()
-      const { data: sectionsData, error: sectionsError } = await getFormulaSections()
+      // Use the existing function that already joins formulas and sections
+      const { data: formulasWithSections, error: formulasError } = await getContentFormulas(user.id)
       
       if (formulasError) {
+        console.error('Database error:', formulasError)
         throw formulasError
       }
       
-      if (sectionsError) {
-        console.warn('Could not load formula sections:', sectionsError)
-      }
-      
-      // Group sections by formula_id
-      const sectionsByFormula = sectionsData?.reduce((acc: any, section: any) => {
-        if (!acc[section.formula_id]) {
-          acc[section.formula_id] = []
-        }
-        acc[section.formula_id].push(section)
-        return acc
-      }, {}) || {}
+      console.log('📊 Raw data from database:', formulasWithSections)
       
       // Transform database format to component format
-      const transformedFormulas = formulasData?.map((formula: any) => {
-        const formulaSections = sectionsByFormula[formula.formula_id] || []
+      const transformedFormulas = formulasWithSections?.map((formula: any) => {
+        const sections = formula.formula_sections || []
         // Sort sections by section_order
-        const sortedSections = formulaSections.sort((a: any, b: any) => a.section_order - b.section_order)
+        const sortedSections = sections.sort((a: any, b: any) => a.section_order - b.section_order)
         
         return {
-          id: formula.formula_id, // Use formula_id as the universal ID
-          name: formula.formula_name,
+          id: formula.formula_id || formula.id, // Use formula_id as the universal ID
+          name: formula.formula_name || 'Untitled Formula',
           category: formula.formula_category || formula.category || 'Framework',
           successRate: Math.round(formula.effectiveness_score || 85),
           usageCount: Math.floor(Math.random() * 500) + 50, // Mock usage for now
-          description: formula.funnel_purpose || formula.description || 'Proven content formula',
+          description: formula.funnel_purpose || formula.content_intent || formula.description || 'Proven content formula',
           contentIntent: formula.content_intent,
           targetAudience: formula.target_audience,
           sectionCount: formula.section_count || sortedSections.length,
@@ -161,14 +149,15 @@ export default function FormulaWorkshopPage() {
           targetRole: formula.primary_target_role || formula.target_audience || 'General',
           isActive: formula.is_active !== false,
           isPremium: formula.is_premium || false,
-          formulaId: formula.formula_id // Keep original formula_id for reference
+          formulaId: formula.formula_id || formula.id // Keep original formula_id for reference
         }
       }) || []
       
+      console.log('✅ Transformed formulas:', transformedFormulas)
       setFormulas(transformedFormulas)
     } catch (err) {
       console.error('Error loading formulas:', err)
-      setError('Failed to load formulas. Please try again.')
+      setError('Failed to load formulas. Please check browser console for details.')
     } finally {
       setLoading(false)
     }
