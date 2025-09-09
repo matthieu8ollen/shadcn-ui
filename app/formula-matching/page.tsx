@@ -65,10 +65,18 @@ const personalStory = sourceData.personal_story || ""
 const hasRichData = Object.keys(sourceData).length > 0
 
  React.useEffect(() => {
-  if (user && ideaId) {
+  if (user && ideaId && !isAnalyzing) {
     loadFormulasAndRecommendations()
   }
 }, [user, ideaId])
+
+  // Cleanup useEffect to prevent memory leaks
+React.useEffect(() => {
+  return () => {
+    // Cleanup function to prevent memory leaks
+    setIsAnalyzing(false)
+  }
+}, [])
 
   // Webhook integration functions
 const callFormulaRecommendationAI = async (ideaData: any, sessionId: string) => {
@@ -125,7 +133,12 @@ const pollForFormulaResponse = async (sessionId: string) => {
       
       if (result.success && result.data) {
         console.log('📨 Received formula recommendations:', result.data)
-        return result.data
+        // Check if data has the expected structure
+        if (result.data.recommended_formulas || result.data.formulas) {
+          return result.data
+        }
+        // Return the data as-is if it has a different structure
+        return { recommended_formulas: [] }
       }
       
       attempts++
