@@ -72,7 +72,7 @@ const hasRichData = Object.keys(sourceData).length > 0
 
   // Webhook integration functions
 const callFormulaRecommendationAI = async (ideaData: any, sessionId: string) => {
-  const FORMULA_WEBHOOK_URL = 'https://testcyber.app.n8n.cloud/webhook/ec529d75-8c81-4c97-98a9-0db8b8d68051'
+  const FORMULA_WEBHOOK_URL = 'https://testcyber.app.n8n.cloud/webhook/1f6e3c3f-b68c-4f71-b83f-7330b528db58'
   
   try {
     console.log('🚀 Calling Formula AI webhook:', { ideaData, sessionId })
