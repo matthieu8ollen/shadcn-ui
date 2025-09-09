@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/contexts/AuthContext"
-import { createIdeationSession, updateIdeationSession, saveIdeaFromSession } from "@/lib/supabase"
+import { createIdeationSession, updateIdeationSession, saveIdeaFromSession, createContentIdea } from "@/lib/supabase"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -444,14 +444,30 @@ const pollForAIResponse = async (sessionId: string) => {
               // Save to Ideas Library
               if (user && topicsData?.[0]) {
                 const topic = topicsData[0] as any
-                await saveIdeaFromSession(
-                  user.id,
-                  currentSessionId || '',
-                  topic?.title || 'AI Generated Topic',
-                  selectedHook,
-                  topic?.key_takeaways || [],
-                  'talk_with_marcus'
-                )
+                await createContentIdea({
+  user_id: user.id,
+  title: topic?.title || 'AI Generated Topic',
+  description: topic?.personal_story || selectedHook,
+  tags: topic?.key_takeaways || [],
+  content_pillar: 'ai_generated',
+  source_type: 'ai_generated',
+  source_data: {
+    session_id: currentSessionId,
+    source_page: 'talk_with_marcus',
+    content_type: topic?.content_type || 'Personal Story',
+    selected_hook: selectedHook,
+    selected_hook_index: selectedHookIndex,
+    hooks: topic?.hooks || [],
+    key_takeaways: topic?.key_takeaways || [],
+    personal_story: topic?.personal_story || '',
+    pain_points_and_struggles: topic?.pain_points_and_struggles || '',
+    concrete_evidence: topic?.concrete_evidence || '',
+    audience_and_relevance: topic?.audience_and_relevance || '',
+    // Store all the rich data from Marcus
+    raw_ai_response: topic
+  },
+  status: 'active'
+})
               }
               setShowTopicOverlay(false)
             }}
