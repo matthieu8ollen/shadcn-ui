@@ -39,6 +39,10 @@ const [conversationContext, setConversationContext] = React.useState({
   topic_focus: ''
 })
 const [currentStatus, setCurrentStatus] = React.useState('')
+const [showTopicOverlay, setShowTopicOverlay] = React.useState(false)
+const [topicsData, setTopicsData] = React.useState([])
+const [selectedHook, setSelectedHook] = React.useState('')
+const [selectedHookIndex, setSelectedHookIndex] = React.useState(0)
 const [waitingForClarification, setWaitingForClarification] = React.useState(false)
 
   // Webhook integration functions
@@ -158,17 +162,11 @@ const pollForAIResponse = async (sessionId: string) => {
       let responseContent = ''
       
       if (aiResponse.response_type === 'topic_ready' && aiResponse.topics?.length > 0) {
-  const topic = aiResponse.topics[0]
-  responseContent = `Great! I've developed a content idea for you:\n\n**${topic.title}**\n\n${topic.key_takeaways?.join('\n') || ''}\n\nWould you like me to save this to your Ideas Library?`
-  
-  const marcusMessage = {
-    id: messages.length + 2,
-    sender: "Marcus",
-    content: responseContent,
-    timestamp: new Date(),
-    isUser: false,
-  }
-  setMessages(prev => [...prev, marcusMessage])
+  // Show overlay instead of regular message
+  setTopicsData(aiResponse.topics)
+  setSelectedHook(aiResponse.topics[0].hooks?.[0] || '')
+  setSelectedHookIndex(0)
+  setShowTopicOverlay(true)
   setWaitingForClarification(false)
   
 } else if (aiResponse.response_type === 'clarification' && aiResponse.questions) {
@@ -319,6 +317,175 @@ const pollForAIResponse = async (sessionId: string) => {
           </Card>
         </div>
       </div>
+      {/* Topic Selection Overlay */}
+{showTopicOverlay && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-xl w-full max-w-6xl max-h-[85vh] shadow-2xl flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <h3 className="text-xl font-semibold text-gray-900">Choose Your Content Hook</h3>
+        <button
+          onClick={() => setShowTopicOverlay(false)}
+          className="text-gray-400 hover:text-gray-600 p-2"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        {topicsData.map((topic: any, topicIndex: number) => (
+          <div key={topicIndex} className="p-6 flex flex-col">
+            {/* Key Takeaways - Teal Box at Top */}
+            <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center space-x-2 mb-3">
+                <div className="w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <h4 className="font-semibold text-teal-900">Key Takeaways for This Content</h4>
+              </div>
+              <div className="text-sm text-teal-800">
+                {topic.key_takeaways?.map((takeaway: string, i: number) => (
+                  <div key={i} className="mb-1">
+                    • {takeaway}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* LinkedIn Preview - Left Side */}
+              <div className="space-y-4">
+                <h5 className="text-lg font-semibold text-gray-900">LinkedIn Preview</h5>
+                <div className="border border-gray-200 rounded-lg bg-white shadow-sm">
+                  {/* LinkedIn Header */}
+                  <div className="p-4 border-b border-gray-100">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-teal-600 rounded-full flex items-center justify-center">
+                        <span className="text-white font-semibold text-sm">You</span>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">Your Name</p>
+                        <p className="text-sm text-gray-500">Your Title • Now</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* LinkedIn Content */}
+                  <div className="p-4">
+                    <p className="text-gray-900 text-sm leading-relaxed">
+                      {selectedHook.length > 150 ? `${selectedHook.substring(0, 150)}...` : selectedHook}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hook Selection - Right Side */}
+              <div className="flex-1">
+                <h5 className="text-lg font-semibold text-gray-900 mb-4">Choose Your Hook</h5>
+                <div className="space-y-3">
+                  {topic.hooks?.map((hook: string, hookIndex: number) => (
+                    <div 
+                      key={hookIndex}
+                      className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                        selectedHookIndex === hookIndex 
+                          ? 'border-teal-500 bg-teal-50' 
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                      onClick={() => {
+                        setSelectedHook(hook);
+                        setSelectedHookIndex(hookIndex);
+                      }}
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                          selectedHookIndex === hookIndex 
+                            ? 'bg-teal-500 text-white' 
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {hookIndex + 1}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900 mb-1">Option {hookIndex + 1}</p>
+                          <p className="text-sm text-gray-600">"{hook}"</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6">
+        <div className="flex justify-between items-center mb-4">
+          <button
+            onClick={() => setShowTopicOverlay(false)}
+            className="text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Back to Chat</span>
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={async () => {
+              // Save to Ideas Library
+              if (user && topicsData?.[0]) {
+                const topic = topicsData[0] as any
+                await saveIdeaFromSession(
+                  user.id,
+                  currentSessionId || '',
+                  topic?.title || 'AI Generated Topic',
+                  selectedHook,
+                  topic?.key_takeaways || [],
+                  'talk_with_marcus'
+                )
+              }
+              setShowTopicOverlay(false)
+            }}
+            className="px-6 py-3 border border-teal-600 text-teal-600 font-medium rounded-lg hover:bg-teal-50 transition"
+          >
+            Save to Ideas Library
+          </button>
+          
+          <button
+            onClick={() => {
+              // Proceed to content creation
+              if (topicsData?.[0]) {
+                const topic = topicsData[0] as any
+                const ideationData = {
+                  topic: topic.title,
+                  angle: selectedHook,
+                  takeaways: topic.key_takeaways || [],
+                  source_page: 'talk_with_marcus' as const,
+                  session_id: currentSessionId || ''
+                }
+                // Navigate to content creation with this data
+                console.log('Navigate to content creation with:', ideationData)
+              }
+              setShowTopicOverlay(false)
+            }}
+            className="px-6 py-3 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition"
+          >
+            Create Content Now
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   )
 }
