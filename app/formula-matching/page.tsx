@@ -72,26 +72,31 @@ const hasRichData = Object.keys(sourceData).length > 0
 
   // Webhook integration functions
 const callFormulaRecommendationAI = async (ideaData: any, sessionId: string) => {
-  const FORMULA_WEBHOOK_URL = process.env.NEXT_PUBLIC_FORMULAS_WEBHOOK_URL || 'https://testcyber.app.n8n.cloud/webhook/your-formula-webhook-id'
+  const FORMULA_WEBHOOK_URL = 'https://testcyber.app.n8n.cloud/webhook/ec529d75-8c81-4c97-98a9-0db8b8d68051'
   
   try {
     console.log('🚀 Calling Formula AI webhook:', { ideaData, sessionId })
     
     const payload = {
-      user_id: user?.id,
-      session_id: sessionId,
-      request_type: 'formula_recommendation',
-      timestamp: new Date().toISOString(),
-      callback_url: `${window.location.origin}/api/formulas/callback`,
+  user_id: user?.id,
+  session_id: sessionId,
+  request_type: 'generate_content_with_guidance',
+  timestamp: new Date().toISOString(),
+  callback_url: `${window.location.origin}/api/formulas/content/callback`,
       
-      idea_data: {
-        title: ideaData.title,
-        description: ideaData.description,
-        content_type: ideaData.contentType,
-        content_pillar: ideaData.contentPillar,
-        tags: ideaData.tags,
-        source_data: ideaData.sourceData
-      }
+      title: ideaData.title,
+content_type: ideaData.contentType || 'personal_story',
+selected_hook: ideaData.description,
+hooks: [ideaData.description],
+key_takeaways: ideaData.tags,
+personal_story: ideaData.sourceData.personal_story || '',
+pain_points_and_struggles: ideaData.sourceData.pain_points_and_struggles || '',
+concrete_evidence: ideaData.sourceData.concrete_evidence || '',
+audience_and_relevance: ideaData.sourceData.audience_and_relevance || '',
+
+user_context: {
+  role: user?.user_metadata?.role || 'executive'
+}
     }
 
     const response = await fetch(FORMULA_WEBHOOK_URL, {
@@ -115,7 +120,7 @@ const pollForFormulaResponse = async (sessionId: string) => {
   
   const poll = async (): Promise<any> => {
     try {
-      const response = await fetch(`/api/formulas/callback?session_id=${sessionId}`)
+      const response = await fetch(`/api/formulas/content/callback?session_id=${sessionId}`)
       const result = await response.json()
       
       if (result.success && result.data) {
@@ -200,6 +205,17 @@ const enhanceFormulasWithAI = (dbFormulas: any[], aiRecommendations: any[]) => {
     const aiMatch = aiRecommendations.find(ai => ai.formula_id === dbFormula.formula_id)
     
     if (aiMatch) {
+      _aiData: {
+  confidence: aiMatch.match_score,
+  whyPerfect: aiMatch.why_it_works,
+  source: 'AI Analysis'
+},
+exampleSections: {
+  hook: `Hook for: ${dbFormula.formula_name}`,
+  main: "Main content section...",
+  insight: "Key insight or takeaway...",
+  cta: "What's your experience? Share below 👇"
+}
       return {
         ...dbFormula,
         id: dbFormula.formula_id,
@@ -235,8 +251,13 @@ const enhanceFormulasWithAI = (dbFormulas: any[], aiRecommendations: any[]) => {
       structure: dbFormula.formula_sections?.map((s: any) => s.section_name) || [],
       complexity: dbFormula.difficulty_level || 'Medium',
       timeToComplete: `${Math.round((dbFormula.estimated_word_count || 400) / 100) * 5}-${Math.round((dbFormula.estimated_word_count || 400) / 100) * 7} min`,
-      expectedEngagement: 'Medium'
-    }
+      expectedEngagement: 'Medium',
+exampleSections: {
+  hook: `Hook for: ${dbFormula.formula_name}`,
+  main: "Main content section...",
+  insight: "Key insight or takeaway...",
+  cta: "What's your experience? Share below 👇"
+}
   })
 }
 
@@ -409,7 +430,7 @@ const enhanceFormulasWithAI = (dbFormulas: any[], aiRecommendations: any[]) => {
                 <Alert className="border-emerald-200 bg-emerald-50">
                   <CheckCircle className="h-4 w-4 text-emerald-600" />
                   <AlertDescription className="text-emerald-800">
-                    <strong>Analysis Complete!</strong> Found {matchedFormulas.length} highly compatible formulas for "{ideaTitle}".
+                    <strong>Analysis Complete!</strong> Found {enhancedFormulas.length} highly compatible formulas for "{ideaTitle}".
                     {hasRichData 
                       ? `Analyzed using rich ideation data including ${keyTakeaways.length} key takeaways and content structure.`
                       : "Analyzed based on topic type, content pillar, and available context."
