@@ -460,7 +460,40 @@ const pollForContentResponse = async (sessionId: string) => {
   }
 }
 
+  // Add loading checks here - right before the main return
   if (loading) {
+    return (
+      <div className="flex h-screen bg-white">
+        <SidebarNavigation />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading formula...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!formula) {
+    return (
+      <div className="flex h-screen bg-white">
+        <SidebarNavigation />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-600">Formula not found</p>
+            <Button onClick={() => router.back()} className="mt-4">Go Back</Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-screen bg-white">
+      <SidebarNavigation />
+      // ... rest of your existing UI
+    
   return (
     <div className="flex h-screen bg-white">
       <SidebarNavigation />
