@@ -230,7 +230,7 @@ const generatePostWithGuidance = async () => {
   } finally {
     setLoading(false);
   }
-}
+};
 
 // Polling function for content response
 const pollForContentResponse = async (sessionId: string) => {
@@ -259,7 +259,7 @@ const pollForContentResponse = async (sessionId: string) => {
   }
   
   return poll()
-}
+};
 
   const currentSectionData = formulaSections.find((s) => s.id === currentSection)
 
