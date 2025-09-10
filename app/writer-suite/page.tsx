@@ -780,4 +780,4 @@ const pollForContentResponse = async (sessionId: string) => {
       </div>
     </div>
   )
-};
+}
