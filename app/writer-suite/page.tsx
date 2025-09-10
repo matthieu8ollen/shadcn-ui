@@ -64,6 +64,10 @@ export default function WriterSuitePage() {
   const [formulaSections, setFormulaSections] = React.useState<any[]>([])
   const [loading, setLoading] = React.useState(true)
   const [ideationData, setIdeationData] = React.useState<any>(null)
+  const [contentData, setContentData] = React.useState<{
+  guidance: any
+  generatedContent: any
+} | null>(null)
 
   const formulaId = searchParams.get("formulaId")
   const ideaId = searchParams.get("ideaId")
@@ -130,42 +134,13 @@ const extractVariablesFromTemplate = (template: string) => {
   const matches = template.match(/\[([^\]]+)\]/g) || []
   return matches.map(match => match.slice(1, -1).toLowerCase().replace(/\s+/g, '_'))
 }
-  // AI Content Generation
-const generateAIContent = async (sectionData: any) => {
-  if (!user || !formula || !ideationData) return
   
-  try {
-    const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
-    
-    const payload = {
-      user_id: user.id,
-      session_id: sessionId,
-      request_type: 'generate_content_with_guidance',
-      timestamp: new Date().toISOString(),
-      callback_url: `${window.location.origin}/api/formulas/content/callback`,
-      
-      selected_formula: {
-        formula_id: formula.formula_id,
-        name: formula.formula_name,
-        category: formula.formula_category
-      },
-      
-      title: ideationData.title,
-      content_type: ideationData.sourceData.content_type || 'personal_story',
-      selected_hook: ideationData.description,
-      hooks: [ideationData.description],
-      key_takeaways: ideationData.tags,
-      
-      current_section: {
-        section_name: sectionData.title,
-        section_purpose: sectionData.description,
-        section_template: sectionData.section_template
-      },
-      
-      user_context: {
-        role: user?.user_metadata?.role || 'executive'
-      }
-    }
+// Auto-generate content and guidance on load
+React.useEffect(() => {
+  if (formula && ideationData && !contentData && !loading) {
+    generatePostWithGuidance()
+  }
+}, [formula, ideationData, contentData, loading])
    
     // Main content generation with writing guidance
 const generatePostWithGuidance = async () => {
@@ -232,28 +207,21 @@ const generatePostWithGuidance = async () => {
       const contentResponse = await pollForContentResponse(sessionId)
       
       if (contentResponse && contentResponse !== 'TIMEOUT' && contentResponse !== 'ERROR') {
-        console.log('✅ Received complete content and guidance:', contentResponse)
-        
-        // Update the preview with generated content
-        if (contentResponse.guidance?.writing_guidance_sections) {
-          const generatedVariables: Record<string, string> = {}
-          
-          contentResponse.guidance.writing_guidance_sections.forEach((section: any, index: number) => {
-            if (section.section_content) {
-              // Map section content to variables
-              const sectionData = formulaSections[index]
-              if (sectionData?.variables?.length > 0) {
-                generatedVariables[sectionData.variables[0]] = section.section_content
-              }
-            }
-          })
-          
-          setVariables(prev => ({ ...prev, ...generatedVariables }))
-        }
-        
-        return contentResponse
-      }
-    }
+  console.log('✅ Received complete content and guidance:', contentResponse)
+  
+  // Store the complete response
+  setContentData(contentResponse)
+  
+  // Update variables with generated content
+  if (contentResponse.generatedContent?.all_filled_variables) {
+    setVariables(prev => ({ 
+      ...prev, 
+      ...contentResponse.generatedContent.all_filled_variables 
+    }))
+  }
+  
+  return contentResponse
+}
     
     return null
   } catch (error) {
@@ -291,25 +259,6 @@ const pollForContentResponse = async (sessionId: string) => {
   }
   
   return poll()
-}
-    const response = await fetch('https://testcyber.app.n8n.cloud/webhook/1f6e3c3f-b68c-4f71-b83f-7330b528db58', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-    
-    const data = await response.json()
-    
-    if (data.message === "Workflow was started") {
-      console.log('🚀 AI content generation started for section:', sectionData.title)
-      return true
-    }
-    
-    return false
-  } catch (error) {
-    console.error('Error generating AI content:', error)
-    return false
-  }
 }
 
   const currentSectionData = formulaSections.find((s) => s.id === currentSection)
@@ -354,37 +303,39 @@ const pollForContentResponse = async (sessionId: string) => {
 
   const getGuidanceContent = (guidanceId: string) => {
   const sectionTitle = currentSectionData?.title || "Current Section"
-  const sectionGuidance = currentSectionData?.section_guidelines || ""
-  const psychPurpose = currentSectionData?.psychological_purpose || ""
+  const sectionIndex = currentSection - 1
+  
+  // Get guidance from backend response
+  const backendGuidance = contentData?.guidance?.writing_guidance_sections?.[sectionIndex]
   
   const content = {
     "ai-enhancement": {
       title: "AI Enhancement",
-      content: `Enhance your ${sectionTitle.toLowerCase()} with AI-powered suggestions. ${sectionGuidance}`,
+      content: backendGuidance?.ai_enhancement || `Enhance your ${sectionTitle.toLowerCase()} with AI-powered suggestions.`,
     },
     "why-matters": {
       title: "Why This Matters", 
-      content: psychPurpose || `Your ${sectionTitle.toLowerCase()} needs to immediately show value to your audience. Focus on the specific problem this solves and why your readers should care right now.`,
+      content: backendGuidance?.why_this_matters || currentSectionData?.psychological_purpose || `Your ${sectionTitle.toLowerCase()} needs to immediately show value to your audience.`,
     },
     "story-essentials": {
       title: "Story Essentials",
-      content: sectionGuidance || `For your ${sectionTitle.toLowerCase()}, include a relatable character, clear conflict, and satisfying resolution.`,
+      content: backendGuidance?.story_essentials || currentSectionData?.section_guidelines || `For your ${sectionTitle.toLowerCase()}, include relatable details and clear structure.`,
     },
     "writing-techniques": {
       title: "Writing Techniques", 
-      content: `Use short, punchy sentences for your ${sectionTitle.toLowerCase()}. Target word count: ${currentSectionData?.word_count_target || 50} words.`,
+      content: backendGuidance?.writing_techniques || `Use short, punchy sentences. Target: ${currentSectionData?.word_count_target || 50} words.`,
     },
     "know-reader": {
       title: "Know Your Reader",
-      content: `Your audience for this ${sectionTitle.toLowerCase()} likely struggles with time constraints and information overload. Speak directly to their pain points.`,
+      content: backendGuidance?.know_your_reader || `Your audience for this ${sectionTitle.toLowerCase()} likely struggles with time constraints.`,
     },
     "emotional-arc": {
       title: "Emotional Arc",
-      content: psychPurpose || `Take readers from curiosity to understanding in your ${sectionTitle.toLowerCase()}.`,
+      content: backendGuidance?.emotional_arc || currentSectionData?.psychological_purpose || `Create emotional connection in your ${sectionTitle.toLowerCase()}.`,
     },
     "voice-tone": {
       title: "Voice and Tone",
-      content: `Maintain a professional yet approachable tone in your ${sectionTitle.toLowerCase()}. Be confident without being arrogant.`,
+      content: backendGuidance?.voice_and_tone || `Maintain a professional yet approachable tone in your ${sectionTitle.toLowerCase()}.`,
     },
   }
 
@@ -444,18 +395,25 @@ const pollForContentResponse = async (sessionId: string) => {
 
   const generatePreview = () => {
   if (isTemplateView) {
-    // Show template with variables
+    // Show template with current variables
     return formulaSections.map(section => {
-      const sectionVariables = section.variables.map(v => variables[v] || `[${v.replace(/_/g, ' ').toUpperCase()}]`)
-      return sectionVariables.join('\n\n')
+      const sectionContent = section.variables.map(v => 
+        variables[v] || `[${v.replace(/_/g, ' ').toUpperCase()}]`
+      ).join('\n\n')
+      return sectionContent
     }).join('\n\n---\n\n')
   } else {
-    // Show filled content
+    // Show AI-generated complete post
+    if (contentData?.generatedContent?.generated_content?.complete_post) {
+      return contentData.generatedContent.generated_content.complete_post
+    }
+    
+    // Fallback to filled variables
     return formulaSections.map(section => {
-      const sectionVariables = section.variables.map(v => 
+      const sectionContent = section.variables.map(v => 
         variables[v] || `Your ${v.replace(/_/g, ' ')} goes here...`
-      )
-      return sectionVariables.join('\n\n')
+      ).join('\n\n')
+      return sectionContent
     }).join('\n\n')
   }
 }
