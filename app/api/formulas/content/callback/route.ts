@@ -1,171 +1,115 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Store for pending content responses
-const contentResponses = new Map<string, any>()
-
-export async function POST(request: NextRequest) {
-  console.log('🚨 CALLBACK ROUTE ACCESSED - REQUEST RECEIVED')
-  console.log('📍 Timestamp:', new Date().toISOString())
-  try {
-    const body = await request.json()
-    console.log('🎯 Received backend response:', body)
-    console.log('🔍 FULL BACKEND PAYLOAD:', JSON.stringify(body, null, 2))
-    console.log('🔍 RESPONSE DETAILS:', {
-      response_type: body.response_type,
-      has_writing_guidance_sections: !!body.writing_guidance_sections,
-      guidance_sections_length: body.writing_guidance_sections?.length || 0,
-      has_generated_content: !!body.generated_content,
-      complete_post_length: body.generated_content?.complete_post?.length || 0,
-      has_all_filled_variables: !!body.all_filled_variables,
-      variables_count: Object.keys(body.all_filled_variables || {}).length
-    })
-
-    // COMPREHENSIVE BACKEND STRUCTURE DEBUG
-    if (body.response_type === 'content_generation_complete') {
-      console.log('📊 CONTENT GENERATION STRUCTURE ANALYSIS:')
-      console.log('  Processing Status:', body.processing_status)
-      console.log('  Total Sections:', body.total_sections)
-      console.log('  Total Variables Filled:', body.total_variables_filled)
-      console.log('  Validation Score:', body.validation_score)
-      console.log('  Sections Data:')
-      body.sections_data?.forEach((section: any, index: number) => {
-        console.log(`    Section ${index + 1}:`, {
-          section_name: section.section_name,
-          section_order: section.section_order,
-          variable_count: section.variable_count,
-          filled_variables_sample: Object.keys(section.filled_variables || {}).slice(0, 3)
-        })
-      })
-      console.log('  All Variables Keys (first 10):', Object.keys(body.all_filled_variables || {}).slice(0, 10))
-    }
-
-    if (body.response_type === 'writing_guidance_extracted') {
-      console.log('📝 WRITING GUIDANCE STRUCTURE ANALYSIS:')
-      console.log('  Processing Status:', body.processing_status)
-      console.log('  Total Sections:', body.total_sections)
-      console.log('  Total Guidance Types:', body.total_guidance_types)
-      console.log('  Guidance Sections:')
-     body.writing_guidance_sections?.forEach((section: any, index: number) => {
-        console.log(`    Section ${index + 1}:`, {
-          section_name: section.section_name,
-          section_id: section.section_id,
-          section_order: section.section_order,
-          guidance_types: section.guidance_types?.length || 0,
-          available_guidance_fields: Object.keys(section).filter(key => !['section_id', 'section_name', 'section_order', 'guidance_types'].includes(key))
-        })
-      })
-    }
-    
-    const { session_id, response_type } = body
-
-    if (!session_id) {
-      return NextResponse.json({ error: 'Missing session_id' }, { status: 400 })
-    }
-
-    // Get existing response for this session (if any)
-const existingResponse = contentResponses.get(session_id) || {
-  response_type: 'content_with_guidance',
-  processing_status: 'partial',
-  timestamp: Date.now(),
-  conversation_stage: 'processing',
-  guidance: null,
-  generatedContent: null
-}
-
-console.log('🔄 EXISTING RESPONSE CHECK:', {
-  session_id,
-  hasExistingResponse: !!contentResponses.get(session_id),
-  currentData: contentResponses.get(session_id) ? 'exists' : 'new'
-})
-
-    // Handle writing guidance response
-    if (response_type === 'writing_guidance_extracted') {
-      console.log('📝 Processing writing guidance response...')
-      
-      existingResponse.guidance = {
-        writing_guidance_sections: body.writing_guidance_sections || [],
-        total_sections: body.total_sections || '',
-        total_guidance_types: body.total_guidance_types || '',
-        processing_status: body.processing_status || '',
-        guidance_types_found: body.guidance_types_found || [],
-        extraction_metadata: body.extraction_metadata || {},
-        field_analysis: body.field_analysis || {}
-      }
-      
-      existingResponse.conversation_stage = body.conversation_stage
-      console.log('✅ Stored guidance data for session:', session_id)
-      console.log('📝 GUIDANCE DATA STORED:', existingResponse.guidance)
-    }
-    
-    // Handle content generation response
-    else if (response_type === 'content_generation_complete') {
-      console.log('📊 Processing generated content response...')
-      
-      existingResponse.generatedContent = {
-        generated_content: {
-          complete_post: body.generated_content?.complete_post || '',
-          post_analytics: body.generated_content?.post_analytics || {}
-        },
-        sections_data: body.sections_data || [],
-        all_filled_variables: body.all_filled_variables || {},
-        template_validation: body.template_validation || {},
-        total_sections: body.total_sections || '',
-        total_variables_filled: body.total_variables_filled || '',
-        validation_score: body.validation_score || '',
-        processing_status: body.processing_status || '',
-        extraction_timestamp: body.extraction_timestamp || ''
-      }
-      
-      existingResponse.conversation_stage = body.conversation_stage
-      console.log('✅ Stored content data for session:', session_id)
-      console.log('📊 CONTENT DATA STORED:', existingResponse.generatedContent)
-    }
-
-    // Check if both responses received
-    const hasGuidance = !!existingResponse.guidance
-    const hasContent = !!existingResponse.generatedContent
-    
-    if (hasGuidance && hasContent) {
-      existingResponse.processing_status = 'complete'
-      console.log('🎉 BOTH responses received - ready for overlay display:', session_id)
-      console.log('📊 Content ready:', !!existingResponse.generatedContent?.generated_content?.complete_post)
-      console.log('📝 Guidance ready:', existingResponse.guidance?.writing_guidance_sections?.length || 0, 'sections')
-    } else {
-      existingResponse.processing_status = 'partial'
-      console.log('⏳ Waiting for complete dataset - current status:', { 
-        hasGuidance, 
-        hasContent,
-        waitingFor: !hasGuidance ? 'guidance' : 'content'
-      })
-    }
-
-    // Update stored response
-    contentResponses.set(session_id, existingResponse)
-    
-    return NextResponse.json({ success: true, received: true })
-  } catch (error) {
-    console.error('❌ Error processing content callback:', error)
-    return NextResponse.json({ error: 'Failed to process callback' }, { status: 500 })
-  }
-}
+// In-memory storage for demo (use Redis/Database in production)
+const responses = new Map<string, any>()
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const session_id = searchParams.get('session_id')
+  const sessionId = searchParams.get('session_id')
   
-  if (!session_id) {
+  console.log('📞 Callback GET request for session:', sessionId)
+  
+  if (!sessionId) {
     return NextResponse.json({ error: 'Missing session_id' }, { status: 400 })
   }
   
-  const response = contentResponses.get(session_id)
-  if (response && response.processing_status === 'complete') {
-    // Only return when both guidance and content received
-    contentResponses.delete(session_id) // One-time use
-    return NextResponse.json({ success: true, data: response, type: 'final' })
-  } else if (response && response.processing_status === 'partial') {
-    // Still waiting for second response
-    return NextResponse.json({ success: false, data: null, status: 'waiting_for_complete_data' })
+  const response = responses.get(sessionId)
+  
+  if (response) {
+    // Check if we have both content and guidance
+    const hasContent = !!response.generatedContent
+    const hasGuidance = !!response.guidance
+    
+    console.log('✅ Found response for session:', sessionId, { hasContent, hasGuidance })
+    
+    if (hasContent && hasGuidance) {
+      // We have both pieces - return final response
+      console.log('🎉 Complete response ready!')
+      responses.delete(sessionId) // Clear after returning
+      return NextResponse.json({
+        success: true,
+        data: response,
+        type: 'final'
+      })
+    } else {
+      // Still waiting for one of the pieces
+      console.log('⏳ Partial response, waiting for more data')
+      return NextResponse.json({
+        success: false,
+        message: 'Partial response received, waiting for completion'
+      })
+    }
   }
   
-  return NextResponse.json({ success: false, data: null })
+  console.log('⏳ No response yet for session:', sessionId)
+  return NextResponse.json({
+    success: false,
+    message: 'No response yet'
+  })
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const data = await request.json()
+    console.log('📨 Callback POST received:', {
+      response_type: data.response_type,
+      session_id: data.session_id
+    })
+    
+    const sessionId = data.session_id
+    
+    if (!sessionId) {
+      console.error('❌ Missing session_id in callback data')
+      return NextResponse.json({ error: 'Missing session_id' }, { status: 400 })
+    }
+    
+    // Get existing response or create new one
+    let existingResponse = responses.get(sessionId) || {}
+    
+    // Handle different response types
+    if (data.response_type === 'content_generation_complete') {
+      console.log('📄 Processing content generation response')
+      existingResponse.generatedContent = {
+        all_filled_variables: transformVariables(data.all_filled_variables),
+        generated_content: data.generated_content
+      }
+    } else if (data.response_type === 'writing_guidance_extracted') {
+      console.log('📝 Processing writing guidance response')
+      existingResponse.guidance = {
+        writing_guidance_sections: data.writing_guidance_sections
+      }
+    }
+    
+    // Store the updated response
+    responses.set(sessionId, existingResponse)
+    
+    console.log('💾 Updated response for session:', sessionId, {
+      hasContent: !!existingResponse.generatedContent,
+      hasGuidance: !!existingResponse.guidance,
+      variableCount: existingResponse.generatedContent?.all_filled_variables ? 
+        Object.keys(existingResponse.generatedContent.all_filled_variables).length : 0,
+      guidanceSections: existingResponse.guidance?.writing_guidance_sections?.length || 0
+    })
+    
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('❌ Callback POST error:', error)
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+}
+
+function transformVariables(allFilledVariables: any): Record<string, string> {
+  const simplified: Record<string, string> = {}
+  
+  if (allFilledVariables) {
+    for (const [key, value] of Object.entries(allFilledVariables)) {
+      if (typeof value === 'object' && value && 'value' in value) {
+        // Convert to lowercase to match frontend expectations
+        simplified[key.toLowerCase()] = (value as any).value
+      }
+    }
+  }
+  
+  console.log('🔀 Transformed variables:', Object.keys(simplified))
+  return simplified
 }
