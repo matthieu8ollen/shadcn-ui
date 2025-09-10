@@ -277,6 +277,10 @@ return null
     setLoading(false);
   }
 };
+}; 
+
+// End of generatePostWithGuidance
+console.log("generatePostWithGuidance function closed properly"); // ADD THIS LINE
 
 // Polling function for content response
 const pollForContentResponse = async (sessionId: string) => {
@@ -306,6 +310,9 @@ const pollForContentResponse = async (sessionId: string) => {
   
   return poll()
 };
+
+}; // End of pollForContentResponse  
+console.log("pollForContentResponse function closed properly"); // ADD THIS LINE
 
   const currentSectionData = formulaSections.find((s) => s.id === currentSection)
 
