@@ -691,16 +691,6 @@ const pollForContentResponse = async (sessionId: string) => {
     </Button>
   )}
   <Button
-      size="sm"
-      onClick={() => setCurrentSection(Math.min(formulaSections.length, currentSection + 1))}
-      disabled={currentSection === formulaSections.length}
-      className="bg-emerald-600 hover:bg-emerald-700 flex-1"
-    >
-      Next
-      <ArrowRight className="h-4 w-4 ml-1" />
-    </Button>
-  )}
-  <Button
     variant="outline"
     size="sm"
     onClick={() => {
