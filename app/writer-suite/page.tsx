@@ -58,6 +58,7 @@ export default function WriterSuitePage() {
   const [sessionTime, setSessionTime] = React.useState(0)
   const [isToolbarVisible, setIsToolbarVisible] = React.useState(false)
   const [activeGuidanceCard, setActiveGuidanceCard] = React.useState<string | null>(null)
+  const [isGenerating, setIsGenerating] = React.useState(false)
   
   // Real data state
   const [formula, setFormula] = React.useState<any>(null)
@@ -154,19 +155,26 @@ React.useEffect(() => {
     hasFormula: !!formula,
     hasIdeationData: !!ideationData,
     hasContentData: !!contentData,
-    isLoading: loading
+    isLoading: loading,
+    isGenerating: isGenerating
   })
   
-  if (formula && ideationData && !loading) {
+  if (formula && ideationData && !loading && !isGenerating && !contentData) {
     console.log('✅ Conditions met, triggering generatePostWithGuidance')
     generatePostWithGuidance()
   } else {
     console.log('❌ Conditions not met for auto-trigger')
   }
-}, [formula, ideationData, loading])
+}, [formula, ideationData, loading, isGenerating, contentData])
    
     // Main content generation with writing guidance
 const generatePostWithGuidance = async () => {
+  // Prevent multiple simultaneous requests
+  if (isGenerating) {
+    console.log('⏸️ Request already in progress, skipping...')
+    return
+  }
+
   console.log('🚀 generatePostWithGuidance called!')
   console.log('🔍 Function entry check:', {
     hasUser: !!user,
@@ -187,6 +195,7 @@ const generatePostWithGuidance = async () => {
   }
   
   try {
+    setIsGenerating(true)
     setLoading(true)
     
     const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
@@ -275,6 +284,7 @@ return null
     return null;
   } finally {
     setLoading(false);
+    setIsGenerating(false);
   }
 };
 
@@ -628,17 +638,22 @@ console.log("generatePreview function closed properly"); // Move this OUTSIDE th
                               {variable.replace(/_/g, " ")}
                             </label>
                             <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-emerald-600 hover:text-emerald-700"
-                              onClick={() => {
-                                console.log('🎯 AI Suggest clicked!')
-                                generatePostWithGuidance()
-                              }}
-                            >
-                              <Sparkles className="h-4 w-4 mr-1" />
-                              AI Suggest
-                            </Button>
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-emerald-600 hover:text-emerald-700"
+                            disabled={loading || isGenerating}
+                            onClick={() => {
+                              if (isGenerating) {
+                                console.log('⏸️ Already generating, please wait...')
+                                return
+                              }
+                              console.log('🎯 AI Suggest clicked!')
+                              generatePostWithGuidance()
+                            }}
+                          >
+                            <Sparkles className="h-4 w-4 mr-1" />
+                            {isGenerating ? 'Generating...' : 'AI Suggest'}
+                          </Button>
                           </div>
                           <Textarea
                             placeholder={`Enter your ${variable.replace(/_/g, " ")}...`}
@@ -667,26 +682,30 @@ console.log("generatePreview function closed properly"); // Move this OUTSIDE th
                         </Button>
                         {currentSection === formulaSections.length ? (
                           <Button
-                            size="sm"
-                            onClick={() => {
-                              console.log('🎯 Generate Post clicked!')
-                              generatePostWithGuidance()
-                            }}
-                            disabled={loading}
-                            className="bg-emerald-600 hover:bg-emerald-700 flex-1"
-                          >
-                            {loading ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                Generating...
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles className="h-4 w-4 mr-1" />
-                                Generate Post
-                              </>
-                            )}
-                          </Button>
+                          size="sm"
+                          onClick={() => {
+                            if (isGenerating) {
+                              console.log('⏸️ Already generating, please wait...')
+                              return
+                            }
+                            console.log('🎯 Generate Post clicked!')
+                            generatePostWithGuidance()
+                          }}
+                          disabled={loading || isGenerating}
+                          className="bg-emerald-600 hover:bg-emerald-700 flex-1"
+                        >
+                          {loading || isGenerating ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-4 w-4 mr-1" />
+                              Generate Post
+                            </>
+                          )}
+                        </Button>
                         ) : (
                           <Button
                             size="sm"
@@ -699,16 +718,21 @@ console.log("generatePreview function closed properly"); // Move this OUTSIDE th
                           </Button>
                         )}
                         <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            console.log('🧪 Manual trigger clicked!')
-                            generatePostWithGuidance()
-                          }}
-                          className="bg-red-100 hover:bg-red-200 flex-1"
-                        >
-                          🧪 DEBUG: Force Generate
-                        </Button>
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (isGenerating) {
+                            console.log('⏸️ Already generating, please wait...')
+                            return
+                          }
+                          console.log('🧪 Manual trigger clicked!')
+                          generatePostWithGuidance()
+                        }}
+                        disabled={loading || isGenerating}
+                        className="bg-red-100 hover:bg-red-200 flex-1"
+                      >
+                        {isGenerating ? 'Generating...' : '🧪 DEBUG: Force Generate'}
+                      </Button>
                       </div>
                     </CardContent>
                   </Card>
