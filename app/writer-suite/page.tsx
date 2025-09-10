@@ -72,6 +72,18 @@ export default function WriterSuitePage() {
   const formulaId = searchParams.get("formulaId")
   const ideaId = searchParams.get("ideaId")
   const ideaTitle = searchParams.get("title") || "Content Creation"
+  // DEBUG: Add comprehensive state logging
+React.useEffect(() => {
+  console.log('🔍 DEBUG - State Check:', {
+    hasUser: !!user,
+    hasFormula: !!formula,
+    hasIdeationData: !!ideationData,
+    hasContentData: !!contentData,
+    isLoading: loading,
+    formulaId,
+    ideaId
+  })
+}, [user, formula, ideationData, contentData, loading, formulaId, ideaId])
   // Load formula data from URL parameters and database
 React.useEffect(() => {
   const loadFormulaData = async () => {
@@ -136,15 +148,43 @@ const extractVariablesFromTemplate = (template: string) => {
 }
   
 // Auto-generate content and guidance on load
+// Auto-generate content and guidance on load - FIXED VERSION
 React.useEffect(() => {
-  if (formula && ideationData && !contentData && !loading) {
+  console.log('🎯 Auto-trigger check:', {
+    hasFormula: !!formula,
+    hasIdeationData: !!ideationData,
+    hasContentData: !!contentData,
+    isLoading: loading
+  })
+  
+  if (formula && ideationData && !loading) {
+    console.log('✅ Conditions met, triggering generatePostWithGuidance')
     generatePostWithGuidance()
+  } else {
+    console.log('❌ Conditions not met for auto-trigger')
   }
-}, [formula, ideationData, contentData, loading])
+}, [formula, ideationData, loading])
    
     // Main content generation with writing guidance
 const generatePostWithGuidance = async () => {
-  if (!user || !formula || !ideationData) return
+  console.log('🚀 generatePostWithGuidance called!')
+  console.log('🔍 Function entry check:', {
+    hasUser: !!user,
+    hasFormula: !!formula,
+    hasIdeationData: !!ideationData,
+    userId: user?.id,
+    formulaId: formula?.formula_id,
+    ideationTitle: ideationData?.title
+  })
+  
+  if (!user || !formula || !ideationData) {
+    console.log('❌ Early return - missing required data:', {
+      user: !!user,
+      formula: !!formula, 
+      ideationData: !!ideationData
+    })
+    return
+  }
   
   try {
     setLoading(true)
@@ -192,15 +232,17 @@ const generatePostWithGuidance = async () => {
       template_variables: variables
     }
     
-    console.log('🚀 Generating complete post with guidance:', payload)
+    console.log('📡 About to send webhook request to:', 'https://testcyber.app.n8n.cloud/webhook/1f6e3c3f-b68c-4f71-b83f-7330b528db58')
+    console.log('📦 Full payload being sent:', JSON.stringify(payload, null, 2))
     
-    const response = await fetch('https://testcyber.app.n8n.cloud/webhook/1f6e3c3f-b68c-4f71-b83f-7330b528db58', {
+    console.log('📨 Webhook response status:', response.status)
+    console.log('📨 Webhook response ok:', response.ok)
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
     
-    const data = await response.json()
+    console.log('📊 Webhook response data:', data)
     
     if (data.message === "Workflow was started") {
       console.log('🔄 Content generation started, polling for response...')
@@ -576,7 +618,10 @@ const pollForContentResponse = async (sessionId: string) => {
                               variant="ghost" 
                               size="sm" 
                               className="text-emerald-600 hover:text-emerald-700"
-                              onClick={() => generatePostWithGuidance()}
+                              onClick={() => {
+                                console.log('🎯 AI Suggest clicked!')
+                                generatePostWithGuidance()
+                              }}
                             >
                               <Sparkles className="h-4 w-4 mr-1" />
                               AI Suggest
@@ -610,7 +655,10 @@ const pollForContentResponse = async (sessionId: string) => {
   {currentSection === formulaSections.length ? (
     <Button
       size="sm"
-      onClick={generatePostWithGuidance}
+      onClick={() => {
+        console.log('🎯 Generate Post clicked!')
+        generatePostWithGuidance()
+      }}
       disabled={loading}
       className="bg-emerald-600 hover:bg-emerald-700 flex-1"
     >
@@ -637,6 +685,28 @@ const pollForContentResponse = async (sessionId: string) => {
       <ArrowRight className="h-4 w-4 ml-1" />
     </Button>
   )}
+  <Button
+      size="sm"
+      onClick={() => setCurrentSection(Math.min(formulaSections.length, currentSection + 1))}
+      disabled={currentSection === formulaSections.length}
+      className="bg-emerald-600 hover:bg-emerald-700 flex-1"
+    >
+      Next
+      <ArrowRight className="h-4 w-4 ml-1" />
+    </Button>
+  )}
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={() => {
+      console.log('🧪 Manual trigger clicked!')
+      generatePostWithGuidance()
+    }}
+    className="bg-red-100 hover:bg-red-200 flex-1"
+  >
+    🧪 DEBUG: Force Generate
+  </Button>
+</div>
 </div>
                     </CardContent>
                   </Card>
