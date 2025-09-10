@@ -235,12 +235,17 @@ const generatePostWithGuidance = async () => {
     console.log('📡 About to send webhook request to:', 'https://testcyber.app.n8n.cloud/webhook/1f6e3c3f-b68c-4f71-b83f-7330b528db58')
     console.log('📦 Full payload being sent:', JSON.stringify(payload, null, 2))
     
-    console.log('📨 Webhook response status:', response.status)
-    console.log('📨 Webhook response ok:', response.ok)
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
+    const response = await fetch('https://testcyber.app.n8n.cloud/webhook/1f6e3c3f-b68c-4f71-b83f-7330b528db58', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        
+        console.log('📨 Webhook response status:', response.status)
+        console.log('📨 Webhook response ok:', response.ok)
+        
+        const data = await response.json()
+        console.log('📊 Webhook response data:', data)
     
     console.log('📊 Webhook response data:', data)
     
