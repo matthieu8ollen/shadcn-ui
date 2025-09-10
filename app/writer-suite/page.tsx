@@ -222,8 +222,8 @@ const generatePostWithGuidance = async () => {
   
   return contentResponse;
 }
-    
     return null;
+    }
   } catch (error) {
     console.error('Error generating post with guidance:', error);
     return null;
