@@ -277,7 +277,6 @@ return null
     setLoading(false);
   }
 };
-}; 
 
 // End of generatePostWithGuidance
 console.log("generatePostWithGuidance function closed properly"); // ADD THIS LINE
@@ -458,8 +457,6 @@ console.log("pollForContentResponse function closed properly"); // ADD THIS LINE
     if (contentData?.generatedContent?.generated_content?.complete_post) {
       return contentData.generatedContent.generated_content.complete_post
     }
-
-console.log("generatePreview function closed properly"); // ADD THIS LINE
     
     // Fallback to filled variables
     return formulaSections.map(section => {
@@ -470,6 +467,8 @@ console.log("generatePreview function closed properly"); // ADD THIS LINE
     }).join('\n\n')
   }
 }
+
+console.log("generatePreview function closed properly"); // Move this OUTSIDE the function
 
   // Add loading checks here - right before the main return
   if (loading) {
@@ -713,7 +712,7 @@ console.log("generatePreview function closed properly"); // ADD THIS LINE
                       </div>
                     </CardContent>
                   </Card>
-                    
+                </div>  
 
                 <div className="space-y-6">
                   <Card>
