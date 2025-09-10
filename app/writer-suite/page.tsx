@@ -250,28 +250,27 @@ const generatePostWithGuidance = async () => {
     console.log('📊 Webhook response data:', data)
     
     if (data.message === "Workflow was started") {
-      console.log('🔄 Content generation started, polling for response...')
-      const contentResponse = await pollForContentResponse(sessionId)
-      
-      if (contentResponse && contentResponse !== 'TIMEOUT' && contentResponse !== 'ERROR') {
-  console.log('✅ Received complete content and guidance:', contentResponse)
+  console.log('🔄 Content generation started, polling for response...')
+  const contentResponse = await pollForContentResponse(sessionId)
   
-  // Store the complete response
-  setContentData(contentResponse)
-  
-  // Update variables with generated content
-  if (contentResponse.generatedContent?.all_filled_variables) {
-    setVariables(prev => ({ 
-      ...prev, 
-      ...contentResponse.generatedContent.all_filled_variables 
-    }))
+  if (contentResponse && contentResponse !== 'TIMEOUT' && contentResponse !== 'ERROR') {
+    console.log('✅ Received complete content and guidance:', contentResponse)
+    
+    setContentData(contentResponse)
+    
+    if (contentResponse.generatedContent?.all_filled_variables) {
+      setVariables(prev => ({ 
+        ...prev, 
+        ...contentResponse.generatedContent.all_filled_variables 
+      }))
+    }
+    
+    return contentResponse
   }
-  
-  return contentResponse;
+  return null
 }
-    return null;
-      
-  } catch (error) {
+return null
+} catch (error) {
     console.error('Error generating post with guidance:', error);
     return null;
   } finally {
