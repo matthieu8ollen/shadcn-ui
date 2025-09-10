@@ -704,9 +704,7 @@ const pollForContentResponse = async (sessionId: string) => {
                       </div>
                     </CardContent>
                   </Card>
-                    </CardContent>
-                  </Card>
-                </div>
+                    
 
                 <div className="space-y-6">
                   <Card>
