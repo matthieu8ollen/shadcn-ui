@@ -311,7 +311,7 @@ const pollForContentResponse = async (sessionId: string) => {
   return poll()
 };
 
-}; // End of pollForContentResponse  
+  
 console.log("pollForContentResponse function closed properly"); // ADD THIS LINE
 
   const currentSectionData = formulaSections.find((s) => s.id === currentSection)
@@ -458,6 +458,8 @@ console.log("pollForContentResponse function closed properly"); // ADD THIS LINE
     if (contentData?.generatedContent?.generated_content?.complete_post) {
       return contentData.generatedContent.generated_content.complete_post
     }
+
+console.log("generatePreview function closed properly"); // ADD THIS LINE
     
     // Fallback to filled variables
     return formulaSections.map(section => {
@@ -471,6 +473,7 @@ console.log("pollForContentResponse function closed properly"); // ADD THIS LINE
 
   // Add loading checks here - right before the main return
   if (loading) {
+    console.log("About to start JSX return");
     return (
       <div className="flex h-screen bg-white">
         <SidebarNavigation />
