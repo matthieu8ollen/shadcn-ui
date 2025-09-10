@@ -224,13 +224,13 @@ const generatePostWithGuidance = async () => {
 }
     
     return null;
-  }; catch (error) {
+  } catch (error) {
     console.error('Error generating post with guidance:', error);
     return null;
   } finally {
     setLoading(false);
-  };
-};
+  }
+}
 
 // Polling function for content response
 const pollForContentResponse = async (sessionId: string) => {
