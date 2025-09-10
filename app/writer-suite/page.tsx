@@ -220,15 +220,15 @@ const generatePostWithGuidance = async () => {
     }))
   }
   
-  return contentResponse
+  return contentResponse;
 }
     
-    return null
+    return null;
   } catch (error) {
-    console.error('Error generating post with guidance:', error)
-    return null
+    console.error('Error generating post with guidance:', error);
+    return null;
   } finally {
-    setLoading(false)
+    setLoading(false);
   }
 }
 
@@ -342,8 +342,6 @@ const pollForContentResponse = async (sessionId: string) => {
   return content[guidanceId as keyof typeof content] || content["why-matters"]
 }
 
-    return content[guidanceId as keyof typeof content] || content["why-matters"]
-  }
 
   const handleGuidanceClick = (guidanceId: string) => {
     if (activeGuidanceCard === guidanceId) {
@@ -447,38 +445,7 @@ const pollForContentResponse = async (sessionId: string) => {
     )
   }
 
-  return (
-    <div className="flex h-screen bg-white">
-      <SidebarNavigation />
-      // ... rest of your existing UI
-    
-  return (
-    <div className="flex h-screen bg-white">
-      <SidebarNavigation />
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading formula...</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-if (!formula) {
-  return (
-    <div className="flex h-screen bg-white">
-      <SidebarNavigation />
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Formula not found</p>
-          <Button onClick={() => router.back()} className="mt-4">Go Back</Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-  return (
+   return (
     <div className="flex h-screen bg-white">
       <SidebarNavigation />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
@@ -609,7 +576,7 @@ if (!formula) {
                               variant="ghost" 
                               size="sm" 
                               className="text-emerald-600 hover:text-emerald-700"
-                              onClick={() => generateAIContent(currentSectionData)}
+                              onClick={() => generatePostWithGuidance()}
                             >
                               <Sparkles className="h-4 w-4 mr-1" />
                               AI Suggest
@@ -671,6 +638,9 @@ if (!formula) {
     </Button>
   )}
 </div>
+                    </CardContent>
+                  </Card>
+                </div>
 
                 <div className="space-y-6">
                   <Card>
