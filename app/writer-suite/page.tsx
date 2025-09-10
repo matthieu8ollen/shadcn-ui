@@ -647,62 +647,63 @@ const pollForContentResponse = async (sessionId: string) => {
                   <Card>
                     <CardContent className="pt-6">
                       <div className="flex gap-2">
-  <Button
-    variant="outline"
-    size="sm"
-    onClick={() => setCurrentSection(Math.max(1, currentSection - 1))}
-    disabled={currentSection === 1}
-    className="flex-1"
-  >
-    <ArrowLeft className="h-4 w-4 mr-1" />
-    Previous
-  </Button>
-  {currentSection === formulaSections.length ? (
-    <Button
-      size="sm"
-      onClick={() => {
-        console.log('🎯 Generate Post clicked!')
-        generatePostWithGuidance()
-      }}
-      disabled={loading}
-      className="bg-emerald-600 hover:bg-emerald-700 flex-1"
-    >
-      {loading ? (
-        <>
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-          Generating...
-        </>
-      ) : (
-        <>
-          <Sparkles className="h-4 w-4 mr-1" />
-          Generate Post
-        </>
-      )}
-    </Button>
-  ) : (
-    <Button
-      size="sm"
-      onClick={() => setCurrentSection(Math.min(formulaSections.length, currentSection + 1))}
-      disabled={currentSection === formulaSections.length}
-      className="bg-emerald-600 hover:bg-emerald-700 flex-1"
-    >
-      Next
-      <ArrowRight className="h-4 w-4 ml-1" />
-    </Button>
-  )}
-  <Button
-    variant="outline"
-    size="sm"
-    onClick={() => {
-      console.log('🧪 Manual trigger clicked!')
-      generatePostWithGuidance()
-    }}
-    className="bg-red-100 hover:bg-red-200 flex-1"
-  >
-    🧪 DEBUG: Force Generate
-  </Button>
-</div>
-</div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentSection(Math.max(1, currentSection - 1))}
+                          disabled={currentSection === 1}
+                          className="flex-1"
+                        >
+                          <ArrowLeft className="h-4 w-4 mr-1" />
+                          Previous
+                        </Button>
+                        {currentSection === formulaSections.length ? (
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              console.log('🎯 Generate Post clicked!')
+                              generatePostWithGuidance()
+                            }}
+                            disabled={loading}
+                            className="bg-emerald-600 hover:bg-emerald-700 flex-1"
+                          >
+                            {loading ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-4 w-4 mr-1" />
+                                Generate Post
+                              </>
+                            )}
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => setCurrentSection(Math.min(formulaSections.length, currentSection + 1))}
+                            disabled={currentSection === formulaSections.length}
+                            className="bg-emerald-600 hover:bg-emerald-700 flex-1"
+                          >
+                            Next
+                            <ArrowRight className="h-4 w-4 ml-1" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            console.log('🧪 Manual trigger clicked!')
+                            generatePostWithGuidance()
+                          }}
+                          className="bg-red-100 hover:bg-red-200 flex-1"
+                        >
+                          🧪 DEBUG: Force Generate
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                     </CardContent>
                   </Card>
                 </div>
