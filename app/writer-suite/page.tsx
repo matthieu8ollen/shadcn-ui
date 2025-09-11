@@ -46,7 +46,7 @@ import React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/contexts/AuthContext"
-import { getContentFormulas, type ContentFormula, type FormulaSection } from "@/lib/supabase"
+import { getContentFormulas, getContentIdea, type ContentFormula, type FormulaSection } from "@/lib/supabase"
 
 export default function WriterSuitePage() {
   const router = useRouter()
@@ -94,37 +94,66 @@ React.useEffect(() => {
       setLoading(true)
       
       // Extract idea data from URL parameters
-      const ideaData = {
-  id: ideaId,
-  title: searchParams.get("title") || "",
-  description: searchParams.get("description") || "",
-  type: searchParams.get("type") || "",
-  contentPillar: searchParams.get("contentPillar") || "",
-  tags: JSON.parse(searchParams.get("tags") || "[]"),
-  sourceData: JSON.parse(searchParams.get("sourceData") || "{}")
-}
-
-// Extract rich data from sourceData like cyberminds does
-const richData = ideaData.sourceData || {}
-const enrichedIdeationData = {
-  title: ideaData.title,
-  topic: ideaData.title,
-  description: ideaData.description,
-  content_type: richData.content_type || 'personal_story',
-  hooks: richData.hooks || [ideaData.description || ''],
-  selected_hook: richData.selected_hook || ideaData.description || '',
-  selected_hook_index: richData.selected_hook_index || 0,
-  key_takeaways: richData.key_takeaways || ideaData.tags || [],
-  personal_story: richData.personal_story || '',
-  pain_points_and_struggles: richData.pain_points_and_struggles || '',
-  concrete_evidence: richData.concrete_evidence || '',
-  audience_and_relevance: richData.audience_and_relevance || '',
-  angle: ideaData.description || '',
-  takeaways: ideaData.tags || []
-}
-
-setIdeationData(enrichedIdeationData)
-      setIdeationData(ideaData)
+      // Fetch complete idea data from database if ideaId exists
+      if (ideaId) {
+        try {
+          const { data: ideaFromDb, error } = await getContentIdea(ideaId)
+          if (error) throw error
+          
+          if (ideaFromDb) {
+            // Extract rich data from database source_data field
+            const richData = ideaFromDb.source_data || {}
+            
+            const enrichedIdeationData = {
+              id: ideaFromDb.id,
+              title: ideaFromDb.title,
+              topic: ideaFromDb.title,
+              description: ideaFromDb.description,
+              content_type: richData.content_type || 'personal_story',
+              hooks: richData.hooks || [ideaFromDb.description || ''],
+              selected_hook: richData.selected_hook || ideaFromDb.description || '',
+              selected_hook_index: richData.selected_hook_index || 0,
+              key_takeaways: richData.key_takeaways || ideaFromDb.tags || [],
+              personal_story: richData.personal_story || '',
+              pain_points_and_struggles: richData.pain_points_and_struggles || '',
+              concrete_evidence: richData.concrete_evidence || '',
+              audience_and_relevance: richData.audience_and_relevance || '',
+              angle: ideaFromDb.description || '',
+              takeaways: ideaFromDb.tags || [],
+              tags: ideaFromDb.tags || [],
+              contentPillar: ideaFromDb.content_pillar || '',
+              sourceData: richData
+            }
+            
+            setIdeationData(enrichedIdeationData)
+            console.log('🎯 Loaded rich ideation data from database:', enrichedIdeationData)
+          }
+        } catch (error) {
+          console.error('Error loading idea from database:', error)
+          // Fallback to URL parameters
+          const fallbackData = {
+            id: ideaId,
+            title: searchParams.get("title") || "",
+            description: searchParams.get("description") || "",
+            type: searchParams.get("type") || "",
+            contentPillar: searchParams.get("contentPillar") || "",
+            tags: JSON.parse(searchParams.get("tags") || "[]"),
+            sourceData: JSON.parse(searchParams.get("sourceData") || "{}")
+          }
+          setIdeationData(fallbackData)
+        }
+      } else {
+        // No ideaId, use URL parameters as fallback
+        const ideaData = {
+          title: searchParams.get("title") || "",
+          description: searchParams.get("description") || "",
+          type: searchParams.get("type") || "",
+          contentPillar: searchParams.get("contentPillar") || "",
+          tags: JSON.parse(searchParams.get("tags") || "[]"),
+          sourceData: JSON.parse(searchParams.get("sourceData") || "{}")
+        }
+        setIdeationData(ideaData)
+      }
       
       // Load formula from database
       const { data: formulasData, error } = await getContentFormulas(user.id)
