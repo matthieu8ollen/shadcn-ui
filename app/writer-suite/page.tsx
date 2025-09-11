@@ -298,21 +298,30 @@ const pollForContentResponse = async (sessionId: string) => {
   
   const poll = async (): Promise<any> => {
     try {
+      attempts++
+      console.log(`📞 Polling attempt ${attempts}/${maxAttempts} - URL: /api/formulas/content/callback?session_id=${sessionId}`)
+      
       const response = await fetch(`/api/formulas/content/callback?session_id=${sessionId}`)
+      console.log(`📞 Poll response status: ${response.status}`)
+      
       const result = await response.json()
+      console.log(`📞 Poll response data:`, result)
       
       if (result.success && result.data && result.type === 'final') {
+        console.log('🎉 Found final response!', result.data)
         return result.data
       }
       
-      attempts++
       if (attempts >= maxAttempts) {
+        console.log('⏰ Polling timeout reached')
         return 'TIMEOUT'
       }
       
+      console.log(`⏳ No response yet, waiting 1.5s before attempt ${attempts + 1}`)
       await new Promise(resolve => setTimeout(resolve, 1500))
       return poll()
     } catch (error) {
+      console.error('❌ Polling error:', error)
       return 'ERROR'
     }
   }
@@ -322,6 +331,26 @@ const pollForContentResponse = async (sessionId: string) => {
 
   
 console.log("pollForContentResponse function closed properly"); // ADD THIS LINE
+
+  // Add this after line 293
+React.useEffect(() => {
+  if (contentData) {
+    console.log('🎯 ContentData updated:', {
+      hasGuidance: !!contentData.guidance,
+      hasGeneratedContent: !!contentData.generatedContent,
+      guidanceSections: contentData.guidance?.writing_guidance_sections?.length || 0,
+      variableCount: contentData.generatedContent?.all_filled_variables ? 
+        Object.keys(contentData.generatedContent.all_filled_variables).length : 0,
+      hasCompletePost: !!contentData.generatedContent?.generated_content?.complete_post
+    })
+    
+    // Log first few variables for verification
+    if (contentData.generatedContent?.all_filled_variables) {
+      const variables = Object.entries(contentData.generatedContent.all_filled_variables).slice(0, 3)
+      console.log('📝 Sample variables:', variables)
+    }
+  }
+}, [contentData])
 
   const currentSectionData = formulaSections.find((s) => s.id === currentSection)
 
@@ -454,20 +483,31 @@ console.log("pollForContentResponse function closed properly"); // ADD THIS LINE
   }
 
   const generatePreview = () => {
+  console.log('🖼️ Generating preview:', {
+    isTemplateView,
+    hasContentData: !!contentData,
+    hasCompletePost: !!contentData?.generatedContent?.generated_content?.complete_post
+  })
+  
   if (isTemplateView) {
     // Show template with current variables
-    return formulaSections.map(section => {
+    const preview = formulaSections.map(section => {
       const sectionContent = section.variables.map(v => 
         variables[v] || `[${v.replace(/_/g, ' ').toUpperCase()}]`
       ).join('\n\n')
       return sectionContent
     }).join('\n\n---\n\n')
+    
+    console.log('📝 Template preview generated, length:', preview.length)
+    return preview
   } else {
     // Show AI-generated complete post
     if (contentData?.generatedContent?.generated_content?.complete_post) {
+      console.log('✅ Using AI-generated complete post')
       return contentData.generatedContent.generated_content.complete_post
     }
     
+    console.log('⚠️ No complete post, falling back to variables')
     // Fallback to filled variables
     return formulaSections.map(section => {
       const sectionContent = section.variables.map(v => 
