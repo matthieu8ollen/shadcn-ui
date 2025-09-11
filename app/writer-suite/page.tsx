@@ -773,6 +773,20 @@ console.log("generatePreview function closed properly"); // Move this OUTSIDE th
                       >
                         {isGenerating ? 'Generating...' : '🧪 DEBUG: Force Generate'}
                       </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            console.log('🧪 DEBUG: Full contentData structure:', JSON.stringify(contentData, null, 2))
+                            console.log('🧪 DEBUG: Variables state:', variables)
+                            console.log('🧪 DEBUG: Current section:', currentSection)
+                            console.log('🧪 DEBUG: Formula sections:', formulaSections.length)
+                            console.log('🧪 DEBUG: Current section data:', currentSectionData)
+                          }}
+                          className="bg-blue-100 hover:bg-blue-200 flex-1"
+                        >
+                          🔍 Debug Data
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
