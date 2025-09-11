@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // In-memory storage for demo (use Redis/Database in production)
 const responses = new Map<string, any>()
+const responseTimestamps = new Map<string, number>()
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -13,6 +14,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing session_id' }, { status: 400 })
   }
   
+  // Clean up expired responses (older than 10 minutes)
+  cleanupExpiredResponses()
+  
   const response = responses.get(sessionId)
   
   if (response) {
@@ -23,16 +27,17 @@ export async function GET(request: NextRequest) {
     console.log('✅ Found response for session:', sessionId, { hasContent, hasGuidance })
     
     if (hasContent && hasGuidance) {
-      // We have both pieces - return final response
       console.log('🎉 Complete response ready!')
-      responses.delete(sessionId) // Clear after returning
+      
+      // Mark as accessed but don't delete immediately
+      responseTimestamps.set(sessionId, Date.now())
+      
       return NextResponse.json({
         success: true,
         data: response,
         type: 'final'
       })
     } else {
-      // Still waiting for one of the pieces
       console.log('⏳ Partial response, waiting for more data')
       return NextResponse.json({
         success: false,
@@ -80,8 +85,9 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Store the updated response
+    // Store the updated response with timestamp
     responses.set(sessionId, existingResponse)
+    responseTimestamps.set(sessionId, Date.now())
     
     console.log('💾 Updated response for session:', sessionId, {
       hasContent: !!existingResponse.generatedContent,
@@ -112,4 +118,17 @@ function transformVariables(allFilledVariables: any): Record<string, string> {
   
   console.log('🔀 Transformed variables:', Object.keys(simplified))
   return simplified
+}
+
+function cleanupExpiredResponses() {
+  const now = Date.now()
+  const expirationTime = 10 * 60 * 1000 // 10 minutes
+  
+  for (const [sessionId, timestamp] of responseTimestamps.entries()) {
+    if (now - timestamp > expirationTime) {
+      responses.delete(sessionId)
+      responseTimestamps.delete(sessionId)
+      console.log('🗑️ Expired response for session:', sessionId)
+    }
+  }
 }
