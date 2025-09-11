@@ -95,14 +95,35 @@ React.useEffect(() => {
       
       // Extract idea data from URL parameters
       const ideaData = {
-        id: ideaId,
-        title: searchParams.get("title") || "",
-        description: searchParams.get("description") || "",
-        type: searchParams.get("type") || "",
-        contentPillar: searchParams.get("contentPillar") || "",
-        tags: JSON.parse(searchParams.get("tags") || "[]"),
-        sourceData: JSON.parse(searchParams.get("sourceData") || "{}")
-      }
+  id: ideaId,
+  title: searchParams.get("title") || "",
+  description: searchParams.get("description") || "",
+  type: searchParams.get("type") || "",
+  contentPillar: searchParams.get("contentPillar") || "",
+  tags: JSON.parse(searchParams.get("tags") || "[]"),
+  sourceData: JSON.parse(searchParams.get("sourceData") || "{}")
+}
+
+// Extract rich data from sourceData like cyberminds does
+const richData = ideaData.sourceData || {}
+const enrichedIdeationData = {
+  title: ideaData.title,
+  topic: ideaData.title,
+  description: ideaData.description,
+  content_type: richData.content_type || 'personal_story',
+  hooks: richData.hooks || [ideaData.description || ''],
+  selected_hook: richData.selected_hook || ideaData.description || '',
+  selected_hook_index: richData.selected_hook_index || 0,
+  key_takeaways: richData.key_takeaways || ideaData.tags || [],
+  personal_story: richData.personal_story || '',
+  pain_points_and_struggles: richData.pain_points_and_struggles || '',
+  concrete_evidence: richData.concrete_evidence || '',
+  audience_and_relevance: richData.audience_and_relevance || '',
+  angle: ideaData.description || '',
+  takeaways: ideaData.tags || []
+}
+
+setIdeationData(enrichedIdeationData)
       setIdeationData(ideaData)
       
       // Load formula from database
@@ -201,45 +222,39 @@ const generatePostWithGuidance = async () => {
     const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
     
     const payload = {
-      user_id: user.id,
-      session_id: sessionId,
-      request_type: 'generate_content_with_guidance',
-      timestamp: new Date().toISOString(),
-      callback_url: `${window.location.origin}/api/formulas/content/callback`,
-      
-      selected_formula: {
-        formula_id: formula.formula_id,
-        name: formula.formula_name,
-        category: formula.formula_category,
-        structure: formulaSections.map(s => s.title),
-        sections: formula.formula_sections
-      },
-      
-      ai_recommendation_context: formula._aiData ? {
-        confidence: formula._aiData.confidence,
-        whyPerfect: formula._aiData.whyPerfect,
-        source: formula._aiData.source
-      } : {},
-      
-      user_context: {
-        role: user?.user_metadata?.role || 'executive'
-      },
-      
-      // All ideation data
-      title: ideationData.title,
-      content_type: ideationData.sourceData.content_type || 'personal_story',
-      selected_hook: ideationData.description,
-      selected_hook_index: 0,
-      hooks: [ideationData.description],
-      key_takeaways: ideationData.tags,
-      personal_story: ideationData.sourceData.personal_story || '',
-      pain_points_and_struggles: ideationData.sourceData.pain_points_and_struggles || '',
-      concrete_evidence: ideationData.sourceData.concrete_evidence || '',
-      audience_and_relevance: ideationData.sourceData.audience_and_relevance || '',
-      
-      // Current variables filled in by user
-      template_variables: variables
-    }
+  user_id: user.id,
+  session_id: sessionId,
+  request_type: 'generate_content_with_guidance',
+  timestamp: new Date().toISOString(),
+  callback_url: `${window.location.origin}/api/formulas/content/callback`,
+  
+  selected_formula: {
+    formula_id: formula.formula_id,
+    name: formula.formula_name,
+    category: formula.formula_category,
+    structure: formulaSections.map(s => s.title),
+    sections: formula.formula_sections
+  },
+  
+  user_context: {
+    role: user?.user_metadata?.role || 'executive'
+  },
+  
+  // ALL IDEATION DATA - MATCHING CYBERMINDS STRUCTURE
+  title: ideationData.title || ideationData.topic,
+  content_type: ideationData.content_type || 'personal_story',
+  selected_hook: ideationData.selected_hook || ideationData.angle || ideationData.description,
+  selected_hook_index: ideationData.selected_hook_index || 0,
+  hooks: ideationData.hooks || [ideationData.angle || ideationData.description],
+  key_takeaways: ideationData.key_takeaways || ideationData.takeaways || ideationData.tags || [],
+  personal_story: ideationData.personal_story || '',
+  pain_points_and_struggles: ideationData.pain_points_and_struggles || '',
+  concrete_evidence: ideationData.concrete_evidence || '',
+  audience_and_relevance: ideationData.audience_and_relevance || '',
+  
+  // Current variables filled in by user
+  template_variables: variables
+}
     
     console.log('📡 About to send webhook request to:', 'https://testcyber.app.n8n.cloud/webhook/ec529d75-8c81-4c97-98a9-0db8b8d68051')
     console.log('📦 Full payload being sent:', JSON.stringify(payload, null, 2))
