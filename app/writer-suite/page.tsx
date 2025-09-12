@@ -546,26 +546,36 @@ const populateVariablesFromAI = (variableName: string) => {
   }
   return 'Select a section to view template'
 } else {
-    // Show generated content for CURRENT section only
-    if (contentData?.guidance?.writing_guidance_sections) {
-      const currentSectionGuidance = contentData.guidance.writing_guidance_sections[currentSection - 1]
-      if (currentSectionGuidance?.section_content) {
-        console.log('✅ Using generated content for section:', currentSection)
-        return `Section ${currentSection}\n${currentSectionData?.title}:\n\n${currentSectionGuidance.section_content}`
-      }
-    }
+  // Show generated content for CURRENT section only
+  if (contentData?.generatedContent?.sections_data && currentSectionData) {
+    // Find the section data that matches current section
+    const currentSectionData_backend = contentData.generatedContent.sections_data.find(
+      (section: any) => section.section_order === currentSection
+    )
     
-    // Fallback: show filled variables for current section
-    if (currentSectionData) {
-      const sectionContent = currentSectionData.variables.map(v => 
-        variables[v] || `[${v.replace(/_/g, ' ').toUpperCase()}]`
-      ).join('\n\n')
-      return `Section ${currentSection}\n${currentSectionData?.title}:\n\n${sectionContent}`
+    if (currentSectionData_backend?.filled_variables) {
+      console.log('✅ Using generated content for section:', currentSection)
+      
+      // Take the template and replace variables with filled values
+      let generatedContent = currentSectionData.section_template || ''
+      
+      // Replace each variable with its filled value
+      Object.entries(currentSectionData_backend.filled_variables).forEach(([variable, value]) => {
+        const variablePattern = new RegExp(`\\[${variable}\\]`, 'g')
+        generatedContent = generatedContent.replace(variablePattern, value as string)
+      })
+      
+      return generatedContent
     }
-    
-    return 'No generated content available for this section'
   }
-}
+  
+  // Fallback: show template with empty variables
+  if (currentSectionData) {
+    return currentSectionData.section_template || 'No template available'
+  }
+  
+  return 'No generated content available for this section'
+}}
 
 console.log("generatePreview function closed properly"); // Move this OUTSIDE the function
 
