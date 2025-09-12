@@ -319,7 +319,6 @@ return null
 };
 
 // End of generatePostWithGuidance
-console.log("generatePostWithGuidance function closed properly"); // ADD THIS LINE
 
 // Polling function for content response
 const pollForContentResponse = async (sessionId: string) => {
@@ -359,8 +358,6 @@ const pollForContentResponse = async (sessionId: string) => {
   return poll()
 };
 
-  
-console.log("pollForContentResponse function closed properly"); // ADD THIS LINE
 
   // Add this after line 293
 React.useEffect(() => {
@@ -518,7 +515,7 @@ const populateVariablesFromAI = (variableName: string) => {
     return
   }
   
-  const aiSuggestion = contentData.generatedContent.all_filled_variables[variableName]
+  const aiSuggestion = contentData.generatedContent.all_filled_variables[variableName]?.value || contentData.generatedContent.all_filled_variables[variableName]
   
   if (aiSuggestion) {
     setVariables(prev => ({
@@ -589,13 +586,7 @@ const populateVariablesFromAI = (variableName: string) => {
     return currentSectionData.section_template || 'No template available'
   }
   
-  return 'No generated content available for this section'
-}
-  
-  return 'No generated content available for this section'
-}}
-
-console.log("generatePreview function closed properly"); // Move this OUTSIDE the function
+  }
 
   // Add loading checks here - right before the main return
   if (loading) {
