@@ -538,14 +538,14 @@ const populateVariablesFromAI = (variableName: string) => {
   })
   
   if (isTemplateView) {
-    // Show template for CURRENT section only
-    if (currentSectionData) {
-      const sectionTemplate = currentSectionData.section_template || ''
-      console.log('📝 Template preview for section:', currentSectionData.title)
-      return `Section ${currentSection}\n${currentSectionData.title}:\n\n${sectionTemplate}`
-    }
-    return 'Select a section to view template'
-  } else {
+  // Show template for CURRENT section only
+  if (currentSectionData) {
+    const sectionTemplate = currentSectionData.section_template || ''
+    console.log('📝 Template preview for section:', currentSectionData.title)
+    return sectionTemplate
+  }
+  return 'Select a section to view template'
+} else {
     // Show generated content for CURRENT section only
     if (contentData?.guidance?.writing_guidance_sections) {
       const currentSectionGuidance = contentData.guidance.writing_guidance_sections[currentSection - 1]
