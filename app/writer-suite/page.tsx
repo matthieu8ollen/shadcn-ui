@@ -553,6 +553,10 @@ const populateVariablesFromAI = (variableName: string) => {
       (section: any) => section.section_order === currentSection
     )
     
+    console.log('🔍 Debug - Current section:', currentSection)
+    console.log('🔍 Debug - Backend section found:', currentSectionData_backend)
+    console.log('🔍 Debug - Template:', currentSectionData.section_template)
+    
     if (currentSectionData_backend?.filled_variables) {
       console.log('✅ Using generated content for section:', currentSection)
       
@@ -561,18 +565,32 @@ const populateVariablesFromAI = (variableName: string) => {
       
       // Replace each variable with its filled value
       Object.entries(currentSectionData_backend.filled_variables).forEach(([variable, value]) => {
-        const variablePattern = new RegExp(`\\[${variable}\\]`, 'g')
+        // Create regex pattern to match [VARIABLE_NAME] exactly
+        const variablePattern = new RegExp(`\\[${variable.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]`, 'g')
         generatedContent = generatedContent.replace(variablePattern, value as string)
+        
+        console.log(`🔄 Replacing [${variable}] with "${value}"`)
       })
       
+      console.log('📝 Final generated content:', generatedContent)
       return generatedContent
+    } else {
+      console.log('❌ No filled_variables found for section:', currentSection)
     }
+  } else {
+    console.log('❌ Missing data:', {
+      hasSectionsData: !!contentData?.generatedContent?.sections_data,
+      hasCurrentSectionData: !!currentSectionData
+    })
   }
   
   // Fallback: show template with empty variables
   if (currentSectionData) {
     return currentSectionData.section_template || 'No template available'
   }
+  
+  return 'No generated content available for this section'
+}
   
   return 'No generated content available for this section'
 }}
