@@ -200,23 +200,15 @@ const extractVariablesFromTemplate = (template: string) => {
   
 // Auto-generate content and guidance on load
 // Auto-generate content and guidance on load - FIXED VERSION
+// Data loaded notification only - no auto-trigger
 React.useEffect(() => {
-  console.log('🎯 Auto-trigger check:', {
+  console.log('📊 Data loaded:', {
     hasFormula: !!formula,
     hasIdeationData: !!ideationData,
-    hasContentData: !!contentData,
-    isLoading: loading,
-    isGenerating: isGenerating
+    formulaName: formula?.formula_name,
+    ideationTitle: ideationData?.title
   })
-  
-  if (formula && ideationData && !loading && !isGenerating && !contentData) {
-    console.log('✅ Conditions met, triggering generatePostWithGuidance')
-    generatePostWithGuidance()
-  } else {
-    console.log('❌ Conditions not met for auto-trigger')
-  }
-}, [formula, ideationData, loading, isGenerating, contentData])
-   
+}, [formula, ideationData])   
     // Main content generation with writing guidance
 const generatePostWithGuidance = async () => {
   // Prevent multiple simultaneous requests
@@ -311,12 +303,6 @@ const generatePostWithGuidance = async () => {
     
     setContentData(contentResponse)
     
-    if (contentResponse.generatedContent?.all_filled_variables) {
-      setVariables(prev => ({ 
-        ...prev, 
-        ...contentResponse.generatedContent.all_filled_variables 
-      }))
-    }
     
     return contentResponse
   }
@@ -396,6 +382,7 @@ React.useEffect(() => {
   }
 }, [contentData])
 
+  
   const currentSectionData = formulaSections.find((s) => s.id === currentSection)
 
   const guidanceTypes = [
@@ -525,40 +512,58 @@ React.useEffect(() => {
   const handleVariableChange = (variable: string, value: string) => {
     setVariables((prev) => ({ ...prev, [variable]: value }))
   }
-
+const populateVariablesFromAI = (variableName: string) => {
+  if (!contentData?.generatedContent?.all_filled_variables) {
+    console.log('❌ No AI suggestions available')
+    return
+  }
+  
+  const aiSuggestion = contentData.generatedContent.all_filled_variables[variableName]
+  
+  if (aiSuggestion) {
+    setVariables(prev => ({
+      ...prev,
+      [variableName]: aiSuggestion
+    }))
+    console.log(`✅ Populated ${variableName} with AI suggestion:`, aiSuggestion.substring(0, 50) + '...')
+  } else {
+    console.log(`❌ No AI suggestion found for variable: ${variableName}`)
+  }
+}
   const generatePreview = () => {
-  console.log('🖼️ Generating preview:', {
+  console.log('🖼️ Generating preview for section:', currentSection, {
     isTemplateView,
     hasContentData: !!contentData,
-    hasCompletePost: !!contentData?.generatedContent?.generated_content?.complete_post
+    currentSectionTitle: currentSectionData?.title
   })
   
   if (isTemplateView) {
-    // Show template with current variables
-    const preview = formulaSections.map(section => {
-      const sectionContent = section.variables.map(v => 
-        variables[v] || `[${v.replace(/_/g, ' ').toUpperCase()}]`
-      ).join('\n\n')
-      return sectionContent
-    }).join('\n\n---\n\n')
-    
-    console.log('📝 Template preview generated, length:', preview.length)
-    return preview
+    // Show template for CURRENT section only
+    if (currentSectionData) {
+      const sectionTemplate = currentSectionData.section_template || ''
+      console.log('📝 Template preview for section:', currentSectionData.title)
+      return `Section ${currentSection}\n${currentSectionData.title}:\n\n${sectionTemplate}`
+    }
+    return 'Select a section to view template'
   } else {
-    // Show AI-generated complete post
-    if (contentData?.generatedContent?.generated_content?.complete_post) {
-      console.log('✅ Using AI-generated complete post')
-      return contentData.generatedContent.generated_content.complete_post
+    // Show generated content for CURRENT section only
+    if (contentData?.guidance?.writing_guidance_sections) {
+      const currentSectionGuidance = contentData.guidance.writing_guidance_sections[currentSection - 1]
+      if (currentSectionGuidance?.section_content) {
+        console.log('✅ Using generated content for section:', currentSection)
+        return `Section ${currentSection}\n${currentSectionData?.title}:\n\n${currentSectionGuidance.section_content}`
+      }
     }
     
-    console.log('⚠️ No complete post, falling back to variables')
-    // Fallback to filled variables
-    return formulaSections.map(section => {
-      const sectionContent = section.variables.map(v => 
-        variables[v] || `Your ${v.replace(/_/g, ' ')} goes here...`
+    // Fallback: show filled variables for current section
+    if (currentSectionData) {
+      const sectionContent = currentSectionData.variables.map(v => 
+        variables[v] || `[${v.replace(/_/g, ' ').toUpperCase()}]`
       ).join('\n\n')
-      return sectionContent
-    }).join('\n\n')
+      return `Section ${currentSection}\n${currentSectionData?.title}:\n\n${sectionContent}`
+    }
+    
+    return 'No generated content available for this section'
   }
 }
 
@@ -722,22 +727,18 @@ console.log("generatePreview function closed properly"); // Move this OUTSIDE th
                               {variable.replace(/_/g, " ")}
                             </label>
                             <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-emerald-600 hover:text-emerald-700"
-                            disabled={loading || isGenerating}
-                            onClick={() => {
-                              if (isGenerating) {
-                                console.log('⏸️ Already generating, please wait...')
-                                return
-                              }
-                              console.log('🎯 AI Suggest clicked!')
-                              generatePostWithGuidance()
-                            }}
-                          >
-                            <Sparkles className="h-4 w-4 mr-1" />
-                            {isGenerating ? 'Generating...' : 'AI Suggest'}
-                          </Button>
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-emerald-600 hover:text-emerald-700"
+                              disabled={!contentData}
+                              onClick={() => {
+                                console.log('🎯 AI Suggest clicked - using existing data!')
+                                populateVariablesFromAI(variable)
+                              }}
+                            >
+                              <Sparkles className="h-4 w-4 mr-1" />
+                              AI Suggest
+                            </Button>
                           </div>
                           <Textarea
                             placeholder={`Enter your ${variable.replace(/_/g, " ")}...`}
