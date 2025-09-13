@@ -888,6 +888,64 @@ console.log("generatePreview function closed properly"); // Move this OUTSIDE th
                             <ArrowRight className="h-4 w-4 ml-1" />
                           </Button>
                         )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            // Generate full post preview by combining all sections
+                            const fullPost = formulaSections.map((section, index) => {
+                              const sectionNum = index + 1
+                              
+                              if (contentData?.generatedContent?.all_filled_variables) {
+                                // Use generated content if available
+                                const sectionVariables: Record<string, string> = {}
+                                
+                                Object.entries(contentData.generatedContent.all_filled_variables).forEach(([variable, data]: [string, any]) => {
+                                  if (data.section_order === sectionNum) {
+                                    sectionVariables[variable] = data.value
+                                  }
+                                })
+                                
+                                let sectionContent = section.section_template || ''
+                                Object.entries(sectionVariables).forEach(([variable, value]) => {
+                                  const variablePattern = new RegExp(`\\[${variable}\\]`, 'g')
+                                  sectionContent = sectionContent.replace(variablePattern, value)
+                                })
+                                
+                                return sectionContent
+                              } else {
+                                // Fallback to user input variables
+                                let sectionContent = section.section_template || ''
+                                section.variables.forEach((variable: string) => {
+                                  const userInput = variables[variable]
+                                  const variablePattern = new RegExp(`\\[${variable.toUpperCase()}\\]`, 'g')
+                                  if (userInput) {
+                                    sectionContent = sectionContent.replace(variablePattern, userInput)
+                                  }
+                                })
+                                return sectionContent
+                              }
+                            }).join('\n\n')
+                            
+                            // Open full post preview in a new window
+                            const previewWindow = window.open('', '_blank', 'width=600,height=800')
+                            previewWindow?.document.write(`
+                              <html>
+                                <head><title>Full Post Preview</title></head>
+                                <body style="font-family: Arial, sans-serif; padding: 20px; line-height: 1.6;">
+                                  <h2>Complete LinkedIn Post Preview</h2>
+                                  <div style="border: 1px solid #ccc; padding: 20px; background: #f9f9f9; white-space: pre-wrap;">
+                                    ${fullPost}
+                                  </div>
+                                </body>
+                              </html>
+                            `)
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white flex-1 mt-2"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Preview Full Post
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
