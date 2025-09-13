@@ -575,7 +575,9 @@ const populateVariablesFromAI = (variableName: string) => {
     return
   }
   
-  const aiSuggestionData = contentData.generatedContent.all_filled_variables[variableName]
+  // Convert frontend variable name to uppercase to match backend keys
+  const backendVariableName = variableName.toUpperCase()
+  const aiSuggestionData = contentData.generatedContent.all_filled_variables[backendVariableName]
   
   if (aiSuggestionData?.value) {
     setVariables(prev => ({
@@ -585,6 +587,8 @@ const populateVariablesFromAI = (variableName: string) => {
     console.log(`✅ Populated ${variableName} with AI suggestion:`, aiSuggestionData.value.substring(0, 50) + '...')
   } else {
     console.log(`❌ No AI suggestion found for variable: ${variableName}`)
+    console.log(`🔍 Looking for: ${backendVariableName}`)
+    console.log(`🔍 Available keys:`, Object.keys(contentData.generatedContent.all_filled_variables))
   }
 }
   const generatePreview = () => {
