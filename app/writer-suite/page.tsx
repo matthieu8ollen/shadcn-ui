@@ -440,34 +440,64 @@ React.useEffect(() => {
   // Get guidance from backend response
   const backendGuidance = contentData?.guidance?.writing_guidance_sections?.[sectionIndex]
   
+  // Extract guidance content from nested objects
+  const extractGuidanceText = (guidanceType: string) => {
+    const guidanceObj = backendGuidance?.[guidanceType]
+    if (!guidanceObj) return null
+    
+    // Combine all text fields into readable guidance
+    const textFields = []
+    if (guidanceObj.main_point) textFields.push(`**Main Point:** ${guidanceObj.main_point}`)
+    if (guidanceObj.how_it_works) textFields.push(`**How It Works:** ${guidanceObj.how_it_works}`)
+    if (guidanceObj.your_story_connection) textFields.push(`**Your Story:** ${guidanceObj.your_story_connection}`)
+    if (guidanceObj.what_to_include) textFields.push(`**What to Include:** ${Array.isArray(guidanceObj.what_to_include) ? guidanceObj.what_to_include.join(' ') : guidanceObj.what_to_include}`)
+    if (guidanceObj.how_to_arrange) textFields.push(`**How to Arrange:** ${guidanceObj.how_to_arrange}`)
+    if (guidanceObj.emphasis_tips) textFields.push(`**Emphasis Tips:** ${guidanceObj.emphasis_tips}`)
+    if (guidanceObj.how_to_start) textFields.push(`**How to Start:** ${guidanceObj.how_to_start}`)
+    if (guidanceObj.structure_tips) textFields.push(`**Structure Tips:** ${guidanceObj.structure_tips}`)
+    if (guidanceObj.length_guidance) textFields.push(`**Length Guidance:** ${guidanceObj.length_guidance}`)
+    if (guidanceObj.impact_techniques) textFields.push(`**Impact Techniques:** ${guidanceObj.impact_techniques}`)
+    if (guidanceObj.reader_mindset) textFields.push(`**Reader Mindset:** ${guidanceObj.reader_mindset}`)
+    if (guidanceObj.connection_points) textFields.push(`**Connection Points:** ${guidanceObj.connection_points}`)
+    if (guidanceObj.what_they_need) textFields.push(`**What They Need:** ${guidanceObj.what_they_need}`)
+    if (guidanceObj.starting_point) textFields.push(`**Starting Point:** ${guidanceObj.starting_point}`)
+    if (guidanceObj.journey) textFields.push(`**Journey:** ${guidanceObj.journey}`)
+    if (guidanceObj.destination) textFields.push(`**Destination:** ${guidanceObj.destination}`)
+    if (guidanceObj.how_to_sound) textFields.push(`**How to Sound:** ${guidanceObj.how_to_sound}`)
+    if (guidanceObj.authenticity_tips) textFields.push(`**Authenticity Tips:** ${guidanceObj.authenticity_tips}`)
+    if (guidanceObj.energy_level) textFields.push(`**Energy Level:** ${guidanceObj.energy_level}`)
+    
+    return textFields.join('\n\n')
+  }
+  
   const content = {
     "ai-enhancement": {
       title: "AI Enhancement",
-      content: backendGuidance?.ai_enhancement || `Enhance your ${sectionTitle.toLowerCase()} with AI-powered suggestions.`,
+      content: extractGuidanceText('ai_enhancement') || `Enhance your ${sectionTitle.toLowerCase()} with AI-powered suggestions.`,
     },
     "why-matters": {
       title: "Why This Matters", 
-      content: backendGuidance?.why_this_matters || currentSectionData?.psychological_purpose || `Your ${sectionTitle.toLowerCase()} needs to immediately show value to your audience.`,
+      content: extractGuidanceText('why_this_matters') || currentSectionData?.psychological_purpose || `Your ${sectionTitle.toLowerCase()} needs to immediately show value to your audience.`,
     },
     "story-essentials": {
       title: "Story Essentials",
-      content: backendGuidance?.story_essentials || currentSectionData?.section_guidelines || `For your ${sectionTitle.toLowerCase()}, include relatable details and clear structure.`,
+      content: extractGuidanceText('story_essentials') || currentSectionData?.section_guidelines || `For your ${sectionTitle.toLowerCase()}, include relatable details and clear structure.`,
     },
     "writing-techniques": {
       title: "Writing Techniques", 
-      content: backendGuidance?.writing_techniques || `Use short, punchy sentences. Target: ${currentSectionData?.word_count_target || 50} words.`,
+      content: extractGuidanceText('writing_techniques') || `Use short, punchy sentences. Target: ${currentSectionData?.word_count_target || 50} words.`,
     },
     "know-reader": {
       title: "Know Your Reader",
-      content: backendGuidance?.know_your_reader || `Your audience for this ${sectionTitle.toLowerCase()} likely struggles with time constraints.`,
+      content: extractGuidanceText('know_your_reader') || `Your audience for this ${sectionTitle.toLowerCase()} likely struggles with time constraints.`,
     },
     "emotional-arc": {
       title: "Emotional Arc",
-      content: backendGuidance?.emotional_arc || currentSectionData?.psychological_purpose || `Create emotional connection in your ${sectionTitle.toLowerCase()}.`,
+      content: extractGuidanceText('emotional_arc') || currentSectionData?.psychological_purpose || `Create emotional connection in your ${sectionTitle.toLowerCase()}.`,
     },
     "voice-tone": {
       title: "Voice and Tone",
-      content: backendGuidance?.voice_and_tone || `Maintain a professional yet approachable tone in your ${sectionTitle.toLowerCase()}.`,
+      content: extractGuidanceText('voice_and_tone') || `Maintain a professional yet approachable tone in your ${sectionTitle.toLowerCase()}.`,
     },
   }
 
