@@ -549,10 +549,23 @@ const populateVariablesFromAI = (variableName: string) => {
   })
   
   if (isTemplateView) {
-  // Show template for CURRENT section only
+  // Show template for CURRENT section with user input variables
   if (currentSectionData) {
-    const sectionTemplate = currentSectionData.section_template || ''
-    console.log('📝 Template preview for section:', currentSectionData.title)
+    let sectionTemplate = currentSectionData.section_template || ''
+    
+    // Replace variables with user input or show placeholders
+    currentSectionData.variables.forEach(variable => {
+      const userInput = variables[variable]
+      const variablePattern = new RegExp(`\\[${variable.toUpperCase()}\\]`, 'g')
+      
+      if (userInput) {
+        // Replace with user input
+        sectionTemplate = sectionTemplate.replace(variablePattern, userInput)
+      }
+      // If no user input, leave the placeholder as is
+    })
+    
+    console.log('📝 Template preview with user variables for section:', currentSectionData.title)
     return sectionTemplate
   }
   return 'Select a section to view template'
