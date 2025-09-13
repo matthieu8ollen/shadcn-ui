@@ -395,43 +395,60 @@ React.useEffect(() => {
   
   const currentSectionData = formulaSections.find((s) => s.id === currentSection)
 
-  const guidanceTypes = [
-    {
-      id: "ai-enhancement",
-      icon: Sparkles,
-      title: "AI Enhancement",
-    },
-    {
-      id: "why-matters",
-      icon: Lightbulb,
-      title: "Why This Matters",
-    },
-    {
-      id: "story-essentials",
-      icon: BookOpen,
-      title: "Story Essentials",
-    },
-    {
-      id: "writing-techniques",
-      icon: PenTool,
-      title: "Writing Techniques",
-    },
-    {
-      id: "know-reader",
-      icon: Users,
-      title: "Know Your Reader",
-    },
-    {
-      id: "emotional-arc",
-      icon: Heart,
-      title: "Emotional Arc",
-    },
-    {
-      id: "voice-tone",
-      icon: Mic,
-      title: "Voice and Tone",
-    },
-  ]
+  // Base guidance types (all possible types)
+const allGuidanceTypes = [
+  {
+    id: "ai-enhancement",
+    backendField: "ai_enhancement",
+    icon: Sparkles,
+    title: "AI Enhancement",
+  },
+  {
+    id: "why-matters",
+    backendField: "why_this_matters",
+    icon: Lightbulb,
+    title: "Why This Matters",
+  },
+  {
+    id: "story-essentials",
+    backendField: "story_essentials",
+    icon: BookOpen,
+    title: "Story Essentials",
+  },
+  {
+    id: "writing-techniques",
+    backendField: "writing_techniques",
+    icon: PenTool,
+    title: "Writing Techniques",
+  },
+  {
+    id: "know-reader",
+    backendField: "know_your_reader",
+    icon: Users,
+    title: "Know Your Reader",
+  },
+  {
+    id: "emotional-arc",
+    backendField: "emotional_arc",
+    icon: Heart,
+    title: "Emotional Arc",
+  },
+  {
+    id: "voice-tone",
+    backendField: "voice_and_tone",
+    icon: Mic,
+    title: "Voice and Tone",
+  },
+]
+
+// Filter guidance types based on what's available for current section
+const sectionIndex = currentSection - 1
+const backendGuidance = contentData?.guidance?.writing_guidance_sections?.[sectionIndex]
+const availableGuidanceTypes = backendGuidance?.guidance_types || []
+
+const guidanceTypes = allGuidanceTypes.filter(type => 
+  availableGuidanceTypes.includes(type.backendField)
+)
 
   const getGuidanceContent = (guidanceId: string) => {
   const sectionTitle = currentSectionData?.title || "Current Section"
