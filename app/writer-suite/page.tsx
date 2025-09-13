@@ -202,24 +202,23 @@ const extractVariablesFromTemplate = (template: string) => {
 // Auto-generate content and guidance on load - FIXED VERSION
 // Data loaded notification only - no auto-trigger
 // Auto-trigger content generation when formula and ideation data are loaded
+// Auto-trigger content generation when formula and ideation data are loaded
 React.useEffect(() => {
   console.log('🎯 Auto-trigger check:', {
     hasFormula: !!formula,
     hasIdeationData: !!ideationData,
     hasContentData: !!contentData,
-    isLoading: loading,
-    isGenerating: isGenerating,
     formulaName: formula?.formula_name,
     ideationTitle: ideationData?.title
   })
   
-  if (formula && ideationData && !loading && !isGenerating && !contentData) {
+  if (formula && ideationData && !contentData) {
     console.log('✅ Conditions met, triggering generatePostWithGuidance')
     generatePostWithGuidance()
   } else {
     console.log('❌ Conditions not met for auto-trigger')
   }
-}, [formula, ideationData, loading, isGenerating, contentData])   
+}, [formula, ideationData, contentData]) // REMOVED loading and isGenerating
     // Main content generation with writing guidance
 const generatePostWithGuidance = async () => {
   // Prevent multiple simultaneous requests
