@@ -815,7 +815,7 @@ console.log("generatePreview function closed properly"); // Move this OUTSIDE th
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="text-emerald-600 hover:text-emerald-700"
+                              className="text-emerald-600 hover:bg-emerald-600 hover:text-white"
                               disabled={!contentData}
                               onClick={() => {
                                 console.log('🎯 AI Suggest clicked - using existing data!')
