@@ -46,7 +46,7 @@ import React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/contexts/AuthContext"
-import { getContentFormulas, type ContentFormula, type FormulaSection } from "@/lib/supabase"
+import { getContentFormulas, getContentIdea, type ContentFormula, type FormulaSection } from "@/lib/supabase"
 
 export default function WriterSuitePage() {
   const router = useRouter()
@@ -94,16 +94,66 @@ React.useEffect(() => {
       setLoading(true)
       
       // Extract idea data from URL parameters
-      const ideaData = {
-        id: ideaId,
-        title: searchParams.get("title") || "",
-        description: searchParams.get("description") || "",
-        type: searchParams.get("type") || "",
-        contentPillar: searchParams.get("contentPillar") || "",
-        tags: JSON.parse(searchParams.get("tags") || "[]"),
-        sourceData: JSON.parse(searchParams.get("sourceData") || "{}")
+      // Fetch complete idea data from database if ideaId exists
+      if (ideaId) {
+        try {
+          const { data: ideaFromDb, error } = await getContentIdea(ideaId)
+          if (error) throw error
+          
+          if (ideaFromDb) {
+            // Extract rich data from database source_data field
+            const richData = ideaFromDb.source_data || {}
+            
+            const enrichedIdeationData = {
+              id: ideaFromDb.id,
+              title: ideaFromDb.title,
+              topic: ideaFromDb.title,
+              description: ideaFromDb.description,
+              content_type: richData.content_type || 'personal_story',
+              hooks: richData.hooks || [ideaFromDb.description || ''],
+              selected_hook: richData.selected_hook || ideaFromDb.description || '',
+              selected_hook_index: richData.selected_hook_index || 0,
+              key_takeaways: richData.key_takeaways || ideaFromDb.tags || [],
+              personal_story: richData.personal_story || '',
+              pain_points_and_struggles: richData.pain_points_and_struggles || '',
+              concrete_evidence: richData.concrete_evidence || '',
+              audience_and_relevance: richData.audience_and_relevance || '',
+              angle: ideaFromDb.description || '',
+              takeaways: ideaFromDb.tags || [],
+              tags: ideaFromDb.tags || [],
+              contentPillar: ideaFromDb.content_pillar || '',
+              sourceData: richData
+            }
+            
+            setIdeationData(enrichedIdeationData)
+            console.log('🎯 Loaded rich ideation data from database:', enrichedIdeationData)
+          }
+        } catch (error) {
+          console.error('Error loading idea from database:', error)
+          // Fallback to URL parameters
+          const fallbackData = {
+            id: ideaId,
+            title: searchParams.get("title") || "",
+            description: searchParams.get("description") || "",
+            type: searchParams.get("type") || "",
+            contentPillar: searchParams.get("contentPillar") || "",
+            tags: JSON.parse(searchParams.get("tags") || "[]"),
+            sourceData: JSON.parse(searchParams.get("sourceData") || "{}")
+          }
+          setIdeationData(fallbackData)
+        }
+      } else {
+        // No ideaId, use URL parameters as fallback
+        const ideaData = {
+          title: searchParams.get("title") || "",
+          description: searchParams.get("description") || "",
+          type: searchParams.get("type") || "",
+          contentPillar: searchParams.get("contentPillar") || "",
+          tags: JSON.parse(searchParams.get("tags") || "[]"),
+          sourceData: JSON.parse(searchParams.get("sourceData") || "{}")
+        }
+        setIdeationData(ideaData)
       }
-      setIdeationData(ideaData)
       
       // Load formula from database
       const { data: formulasData, error } = await getContentFormulas(user.id)
@@ -150,23 +200,15 @@ const extractVariablesFromTemplate = (template: string) => {
   
 // Auto-generate content and guidance on load
 // Auto-generate content and guidance on load - FIXED VERSION
+// Data loaded notification only - no auto-trigger
 React.useEffect(() => {
-  console.log('🎯 Auto-trigger check:', {
+  console.log('📊 Data loaded:', {
     hasFormula: !!formula,
     hasIdeationData: !!ideationData,
-    hasContentData: !!contentData,
-    isLoading: loading,
-    isGenerating: isGenerating
+    formulaName: formula?.formula_name,
+    ideationTitle: ideationData?.title
   })
-  
-  if (formula && ideationData && !loading && !isGenerating && !contentData) {
-    console.log('✅ Conditions met, triggering generatePostWithGuidance')
-    generatePostWithGuidance()
-  } else {
-    console.log('❌ Conditions not met for auto-trigger')
-  }
-}, [formula, ideationData, loading, isGenerating, contentData])
-   
+}, [formula, ideationData])   
     // Main content generation with writing guidance
 const generatePostWithGuidance = async () => {
   // Prevent multiple simultaneous requests
@@ -201,45 +243,39 @@ const generatePostWithGuidance = async () => {
     const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
     
     const payload = {
-      user_id: user.id,
-      session_id: sessionId,
-      request_type: 'generate_content_with_guidance',
-      timestamp: new Date().toISOString(),
-      callback_url: `${window.location.origin}/api/formulas/content/callback`,
-      
-      selected_formula: {
-        formula_id: formula.formula_id,
-        name: formula.formula_name,
-        category: formula.formula_category,
-        structure: formulaSections.map(s => s.title),
-        sections: formula.formula_sections
-      },
-      
-      ai_recommendation_context: formula._aiData ? {
-        confidence: formula._aiData.confidence,
-        whyPerfect: formula._aiData.whyPerfect,
-        source: formula._aiData.source
-      } : {},
-      
-      user_context: {
-        role: user?.user_metadata?.role || 'executive'
-      },
-      
-      // All ideation data
-      title: ideationData.title,
-      content_type: ideationData.sourceData.content_type || 'personal_story',
-      selected_hook: ideationData.description,
-      selected_hook_index: 0,
-      hooks: [ideationData.description],
-      key_takeaways: ideationData.tags,
-      personal_story: ideationData.sourceData.personal_story || '',
-      pain_points_and_struggles: ideationData.sourceData.pain_points_and_struggles || '',
-      concrete_evidence: ideationData.sourceData.concrete_evidence || '',
-      audience_and_relevance: ideationData.sourceData.audience_and_relevance || '',
-      
-      // Current variables filled in by user
-      template_variables: variables
-    }
+  user_id: user.id,
+  session_id: sessionId,
+  request_type: 'generate_content_with_guidance',
+  timestamp: new Date().toISOString(),
+  callback_url: `${window.location.origin}/api/formulas/content/callback`,
+  
+  selected_formula: {
+    formula_id: formula.formula_id,
+    name: formula.formula_name,
+    category: formula.formula_category,
+    structure: formulaSections.map(s => s.title),
+    sections: formula.formula_sections
+  },
+  
+  user_context: {
+    role: user?.user_metadata?.role || 'executive'
+  },
+  
+  // ALL IDEATION DATA - MATCHING CYBERMINDS STRUCTURE
+  title: ideationData.title || ideationData.topic,
+  content_type: ideationData.content_type || 'personal_story',
+  selected_hook: ideationData.selected_hook || ideationData.angle || ideationData.description,
+  selected_hook_index: ideationData.selected_hook_index || 0,
+  hooks: ideationData.hooks || [ideationData.angle || ideationData.description],
+  key_takeaways: ideationData.key_takeaways || ideationData.takeaways || ideationData.tags || [],
+  personal_story: ideationData.personal_story || '',
+  pain_points_and_struggles: ideationData.pain_points_and_struggles || '',
+  concrete_evidence: ideationData.concrete_evidence || '',
+  audience_and_relevance: ideationData.audience_and_relevance || '',
+  
+  // Current variables filled in by user
+  template_variables: variables
+}
     
     console.log('📡 About to send webhook request to:', 'https://testcyber.app.n8n.cloud/webhook/ec529d75-8c81-4c97-98a9-0db8b8d68051')
     console.log('📦 Full payload being sent:', JSON.stringify(payload, null, 2))
@@ -267,12 +303,6 @@ const generatePostWithGuidance = async () => {
     
     setContentData(contentResponse)
     
-    if (contentResponse.generatedContent?.all_filled_variables) {
-      setVariables(prev => ({ 
-        ...prev, 
-        ...contentResponse.generatedContent.all_filled_variables 
-      }))
-    }
     
     return contentResponse
   }
@@ -352,6 +382,7 @@ React.useEffect(() => {
   }
 }, [contentData])
 
+  
   const currentSectionData = formulaSections.find((s) => s.id === currentSection)
 
   const guidanceTypes = [
@@ -481,42 +512,70 @@ React.useEffect(() => {
   const handleVariableChange = (variable: string, value: string) => {
     setVariables((prev) => ({ ...prev, [variable]: value }))
   }
-
+const populateVariablesFromAI = (variableName: string) => {
+  if (!contentData?.generatedContent?.all_filled_variables) {
+    console.log('❌ No AI suggestions available')
+    return
+  }
+  
+  const aiSuggestion = contentData.generatedContent.all_filled_variables[variableName]
+  
+  if (aiSuggestion) {
+    setVariables(prev => ({
+      ...prev,
+      [variableName]: aiSuggestion
+    }))
+    console.log(`✅ Populated ${variableName} with AI suggestion:`, aiSuggestion.substring(0, 50) + '...')
+  } else {
+    console.log(`❌ No AI suggestion found for variable: ${variableName}`)
+  }
+}
   const generatePreview = () => {
-  console.log('🖼️ Generating preview:', {
+  console.log('🖼️ Generating preview for section:', currentSection, {
     isTemplateView,
     hasContentData: !!contentData,
-    hasCompletePost: !!contentData?.generatedContent?.generated_content?.complete_post
+    currentSectionTitle: currentSectionData?.title
   })
   
   if (isTemplateView) {
-    // Show template with current variables
-    const preview = formulaSections.map(section => {
-      const sectionContent = section.variables.map(v => 
-        variables[v] || `[${v.replace(/_/g, ' ').toUpperCase()}]`
-      ).join('\n\n')
-      return sectionContent
-    }).join('\n\n---\n\n')
-    
-    console.log('📝 Template preview generated, length:', preview.length)
-    return preview
-  } else {
-    // Show AI-generated complete post
-    if (contentData?.generatedContent?.generated_content?.complete_post) {
-      console.log('✅ Using AI-generated complete post')
-      return contentData.generatedContent.generated_content.complete_post
-    }
-    
-    console.log('⚠️ No complete post, falling back to variables')
-    // Fallback to filled variables
-    return formulaSections.map(section => {
-      const sectionContent = section.variables.map(v => 
-        variables[v] || `Your ${v.replace(/_/g, ' ')} goes here...`
-      ).join('\n\n')
-      return sectionContent
-    }).join('\n\n')
+  // Show template for CURRENT section only
+  if (currentSectionData) {
+    const sectionTemplate = currentSectionData.section_template || ''
+    console.log('📝 Template preview for section:', currentSectionData.title)
+    return sectionTemplate
   }
-}
+  return 'Select a section to view template'
+} else {
+  // Show generated content for CURRENT section only
+  if (contentData?.generatedContent?.sections_data && currentSectionData) {
+    // Find the section data that matches current section
+    const currentSectionData_backend = contentData.generatedContent.sections_data.find(
+      (section: any) => section.section_order === currentSection
+    )
+    
+    if (currentSectionData_backend?.filled_variables) {
+      console.log('✅ Using generated content for section:', currentSection)
+      
+      // Take the template and replace variables with filled values
+      let generatedContent = currentSectionData.section_template || ''
+      
+      // Replace each variable with its filled value
+      Object.entries(currentSectionData_backend.filled_variables).forEach(([variable, value]) => {
+        const variablePattern = new RegExp(`\\[${variable}\\]`, 'g')
+        generatedContent = generatedContent.replace(variablePattern, value as string)
+      })
+      
+      return generatedContent
+    }
+  }
+  
+  // Fallback: show template with empty variables
+  if (currentSectionData) {
+    return currentSectionData.section_template || 'No template available'
+  }
+  
+  return 'No generated content available for this section'
+}}
 
 console.log("generatePreview function closed properly"); // Move this OUTSIDE the function
 
@@ -678,22 +737,18 @@ console.log("generatePreview function closed properly"); // Move this OUTSIDE th
                               {variable.replace(/_/g, " ")}
                             </label>
                             <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-emerald-600 hover:text-emerald-700"
-                            disabled={loading || isGenerating}
-                            onClick={() => {
-                              if (isGenerating) {
-                                console.log('⏸️ Already generating, please wait...')
-                                return
-                              }
-                              console.log('🎯 AI Suggest clicked!')
-                              generatePostWithGuidance()
-                            }}
-                          >
-                            <Sparkles className="h-4 w-4 mr-1" />
-                            {isGenerating ? 'Generating...' : 'AI Suggest'}
-                          </Button>
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-emerald-600 hover:text-emerald-700"
+                              disabled={!contentData}
+                              onClick={() => {
+                                console.log('🎯 AI Suggest clicked - using existing data!')
+                                populateVariablesFromAI(variable)
+                              }}
+                            >
+                              <Sparkles className="h-4 w-4 mr-1" />
+                              AI Suggest
+                            </Button>
                           </div>
                           <Textarea
                             placeholder={`Enter your ${variable.replace(/_/g, " ")}...`}
