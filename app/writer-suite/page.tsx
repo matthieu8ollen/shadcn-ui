@@ -575,14 +575,14 @@ const populateVariablesFromAI = (variableName: string) => {
     return
   }
   
-  const aiSuggestion = contentData.generatedContent.all_filled_variables[variableName]
+  const aiSuggestionData = contentData.generatedContent.all_filled_variables[variableName]
   
-  if (aiSuggestion) {
+  if (aiSuggestionData?.value) {
     setVariables(prev => ({
       ...prev,
-      [variableName]: aiSuggestion
+      [variableName]: aiSuggestionData.value // ← Extract .value field
     }))
-    console.log(`✅ Populated ${variableName} with AI suggestion:`, aiSuggestion.substring(0, 50) + '...')
+    console.log(`✅ Populated ${variableName} with AI suggestion:`, aiSuggestionData.value.substring(0, 50) + '...')
   } else {
     console.log(`❌ No AI suggestion found for variable: ${variableName}`)
   }
