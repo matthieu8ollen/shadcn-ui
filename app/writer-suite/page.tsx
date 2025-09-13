@@ -888,36 +888,6 @@ console.log("generatePreview function closed properly"); // Move this OUTSIDE th
                             <ArrowRight className="h-4 w-4 ml-1" />
                           </Button>
                         )}
-                        <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          if (isGenerating) {
-                            console.log('⏸️ Already generating, please wait...')
-                            return
-                          }
-                          console.log('🧪 Manual trigger clicked!')
-                          generatePostWithGuidance()
-                        }}
-                        disabled={loading || isGenerating}
-                        className="bg-red-100 hover:bg-red-200 flex-1"
-                      >
-                        {isGenerating ? 'Generating...' : '🧪 DEBUG: Force Generate'}
-                      </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            console.log('🧪 DEBUG: Full contentData structure:', JSON.stringify(contentData, null, 2))
-                            console.log('🧪 DEBUG: Variables state:', variables)
-                            console.log('🧪 DEBUG: Current section:', currentSection)
-                            console.log('🧪 DEBUG: Formula sections:', formulaSections.length)
-                            console.log('🧪 DEBUG: Current section data:', currentSectionData)
-                          }}
-                          className="bg-blue-100 hover:bg-blue-200 flex-1"
-                        >
-                          🔍 Debug Data
-                        </Button>
                       </div>
                     </CardContent>
                   </Card>
