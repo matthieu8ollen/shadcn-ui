@@ -73,12 +73,13 @@ export async function POST(request: NextRequest) {
     
     // Handle different response types
     if (data.response_type === 'content_generation_complete') {
-      console.log('📄 Processing content generation response')
-      existingResponse.generatedContent = {
-        all_filled_variables: transformVariables(data.all_filled_variables),
-        generated_content: data.generated_content
-      }
-    } else if (data.response_type === 'writing_guidance_extracted') {
+  console.log('📄 Processing content generation response')
+  existingResponse.generatedContent = {
+    all_filled_variables: transformVariables(data.all_filled_variables),
+    generated_content: data.generated_content,
+    sections_data: data.sections_data || []  
+  }
+} else if (data.response_type === 'writing_guidance_extracted') {
       console.log('📝 Processing writing guidance response')
       existingResponse.guidance = {
         writing_guidance_sections: data.writing_guidance_sections
