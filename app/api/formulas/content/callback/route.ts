@@ -75,10 +75,10 @@ export async function POST(request: NextRequest) {
     if (data.response_type === 'content_generation_complete') {
   console.log('📄 Processing content generation response')
   existingResponse.generatedContent = {
-    all_filled_variables: transformVariables(data.all_filled_variables),
-    generated_content: data.generated_content,
-    sections_data: data.sections_data || []  
-  }
+  all_filled_variables: data.all_filled_variables || {}, // Store full structure, no transformation
+  generated_content: data.generated_content,
+  sections_data: data.sections_data || []
+}
 } else if (data.response_type === 'writing_guidance_extracted') {
       console.log('📝 Processing writing guidance response')
       existingResponse.guidance = {
@@ -105,21 +105,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function transformVariables(allFilledVariables: any): Record<string, string> {
-  const simplified: Record<string, string> = {}
-  
-  if (allFilledVariables) {
-    for (const [key, value] of Object.entries(allFilledVariables)) {
-      if (typeof value === 'object' && value && 'value' in value) {
-        // Convert to lowercase to match frontend expectations
-        simplified[key.toLowerCase()] = (value as any).value
-      }
-    }
-  }
-  
-  console.log('🔀 Transformed variables:', Object.keys(simplified))
-  return simplified
-}
 
 function cleanupExpiredResponses() {
   const now = Date.now()
