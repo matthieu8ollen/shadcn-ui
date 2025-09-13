@@ -447,7 +447,7 @@ const backendGuidance = contentData?.guidance?.writing_guidance_sections?.[secti
 const availableGuidanceTypes = backendGuidance?.guidance_types || []
 
 const guidanceTypes = allGuidanceTypes.filter(type => 
-  availableGuidanceTypes.includes(type.backendField)
+  type.id === "ai-enhancement" || availableGuidanceTypes.includes(type.backendField)
 )
 
   const getGuidanceContent = (guidanceId: string) => {
