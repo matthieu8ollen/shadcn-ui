@@ -974,8 +974,6 @@ console.log("generatePreview function closed properly"); // Move this OUTSIDE th
                 </div>
               </div>
             </div>
-          </GridBeams>
-        </div>
       </GridBeams>
         </div>
       </div>
