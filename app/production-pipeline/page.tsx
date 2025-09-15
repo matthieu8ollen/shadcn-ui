@@ -244,6 +244,20 @@ export default function ProductionPipelinePage() {
       showToast('error', 'Error archiving content')
     }
   }
+  // Add this loading check right before the existing return statement
+  if (loadingContent && draftContent.length === 0) {
+    return (
+      <div className="flex h-screen bg-background">
+        <SidebarNavigation />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading your content...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="flex h-screen bg-background">
       <SidebarNavigation />
