@@ -967,39 +967,14 @@ const saveCompletedPost = async () => {
                           Preview Full Post
                         </Button>
                         <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setIsFullPostPreviewOpen(true)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white flex-1 mt-2"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Preview Full Post
-                        </Button>
-                        <Button
                           variant="default"
                           size="sm"
-                          onClick={saveCompletedPost}
-                          disabled={isSaving}
+                          onClick={() => console.log('Save clicked')}
                           className="bg-green-600 hover:bg-green-700 text-white flex-1 mt-2"
                         >
-                          {isSaving ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              Saving...
-                            </>
-                          ) : saveSuccess ? (
-                            <>
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Saved!
-                            </>
-                          ) : (
-                            <>
-                              <Save className="h-4 w-4 mr-1" />
-                              Save Post
-                            </>
-                          )}
+                          <Save className="h-4 w-4 mr-1" />
+                          Save Post
                         </Button>
-                      </div>
                       </div>
                     </CardContent>
                   </Card>
