@@ -36,6 +36,10 @@ import {
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useAuth } from "@/contexts/AuthContext"
+import { useContent } from "@/contexts/ContentContext"
+import { useToast } from "@/components/ToastNotifications"
+import { useEffect } from "react"
 
 // Sample content data for the pipeline
 const sampleContent = {
@@ -147,19 +151,99 @@ const getPerformanceBadge = (performance: string) => {
 }
 
 export default function ProductionPipelinePage() {
+  const { user } = useAuth()
+  const {
+    draftContent,
+    scheduledContent,
+    publishedContent,
+    archivedContent,
+    loadingContent,
+    refreshContent,
+    updateContent,
+    publishContent,
+    deleteContent
+  } = useContent()
+  const { showToast } = useToast()
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const [filterType, setFilterType] = useState<string>("all")
+
+  // Load content on mount
+  useEffect(() => {
+    if (user) {
+      refreshContent()
+    }
+  }, [user, refreshContent])
 
   const handleSelectItem = (id: string) => {
     setSelectedItems((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]))
   }
 
   const handleSelectAll = (stage: string) => {
-    const stageItems = sampleContent[stage as keyof typeof sampleContent]
-    const stageIds = stageItems.map((item) => item.id)
-    setSelectedItems((prev) => [...prev, ...stageIds])
+  let stageItems: any[] = []
+  switch(stage) {
+    case 'drafts': stageItems = draftContent; break;
+    case 'scheduled': stageItems = scheduledContent; break;
+    case 'published': stageItems = publishedContent; break;
+    case 'archived': stageItems = archivedContent; break;
+  }
+  const stageIds = stageItems.map((item) => item.id)
+  setSelectedItems((prev) => [...prev, ...stageIds])
+}
+
+  const handleEditContent = (content: any) => {
+    // Navigate to appropriate editor based on source
+    if (content.source_page === 'writer-suite') {
+      window.open(`/writer-suite?contentId=${content.id}`, '_blank')
+    } else {
+      window.open(`/create?editId=${content.id}`, '_blank')
+    }
   }
 
+  const handleScheduleContent = (content: any) => {
+    // Open scheduling modal
+    showToast('info', 'Opening schedule modal...')
+  }
+
+  const handlePublishNow = async (contentId: string) => {
+    try {
+      const success = await publishContent(contentId)
+      if (success) {
+        showToast('success', 'Content published successfully!')
+      } else {
+        showToast('error', 'Failed to publish content')
+      }
+    } catch (error) {
+      showToast('error', 'Error publishing content')
+    }
+  }
+
+  const handleDeleteContent = async (contentId: string) => {
+    if (confirm('Are you sure you want to delete this content?')) {
+      try {
+        const success = await deleteContent(contentId)
+        if (success) {
+          showToast('success', 'Content deleted successfully')
+        } else {
+          showToast('error', 'Failed to delete content')
+        }
+      } catch (error) {
+        showToast('error', 'Error deleting content')
+      }
+    }
+  }
+
+  const handleArchiveContent = async (contentId: string) => {
+    try {
+      const success = await updateContent(contentId, { status: 'archived' })
+      if (success) {
+        showToast('success', 'Content archived successfully')
+      } else {
+        showToast('error', 'Failed to archive content')
+      }
+    } catch (error) {
+      showToast('error', 'Error archiving content')
+    }
+  }
   return (
     <div className="flex h-screen bg-background">
       <SidebarNavigation />
@@ -243,8 +327,8 @@ export default function ProductionPipelinePage() {
                 <CardTitle className="text-sm font-medium text-gray-600">Drafts</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{sampleContent.drafts.length}</div>
-                <p className="text-xs text-gray-500 mt-1">2 need attention</p>
+                <div className="text-2xl font-bold text-blue-600">{draftContent.length}</div>
+                <p className="text-xs text-gray-500 mt-1">{draftContent.filter(c => !c.title).length} need attention</p>
               </CardContent>
             </Card>
 
@@ -253,8 +337,10 @@ export default function ProductionPipelinePage() {
                 <CardTitle className="text-sm font-medium text-gray-600">Scheduled</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-600">{sampleContent.scheduled.length}</div>
-                <p className="text-xs text-gray-500 mt-1">Next: Tomorrow 9AM</p>
+                <div className="text-2xl font-bold text-orange-600">{scheduledContent.length}</div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {scheduledContent.length > 0 ? `Next: ${new Date(scheduledContent[0]?.scheduled_date || '').toLocaleDateString()}` : 'None scheduled'}
+                </p>
               </CardContent>
             </Card>
 
@@ -263,8 +349,8 @@ export default function ProductionPipelinePage() {
                 <CardTitle className="text-sm font-medium text-gray-600">Published</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{sampleContent.published.length}</div>
-                <p className="text-xs text-gray-500 mt-1">Avg. 2.1K views</p>
+                <div className="text-2xl font-bold text-green-600">{publishedContent.length}</div>
+                <p className="text-xs text-gray-500 mt-1">This month</p>
               </CardContent>
             </Card>
 
@@ -273,25 +359,26 @@ export default function ProductionPipelinePage() {
                 <CardTitle className="text-sm font-medium text-gray-600">Archived</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-600">{sampleContent.archived.length}</div>
-                <p className="text-xs text-gray-500 mt-1">This month</p>
+                <div className="text-2xl font-bold text-gray-600">{archivedContent.length}</div>
+                <p className="text-xs text-gray-500 mt-1">Total archived</p>
               </CardContent>
             </Card>
           </div>
+
 
           {/* Kanban Pipeline */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {/* Drafts Column */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-blue-600">Drafts ({sampleContent.drafts.length})</h3>
+                <h3 className="font-semibold text-blue-600">Drafts ({draftContent.length})</h3>
                 <Button variant="ghost" size="sm" onClick={() => handleSelectAll("drafts")}>
                   Select All
                 </Button>
               </div>
 
               <div className="space-y-3">
-                {sampleContent.drafts.map((item) => {
+                {draftContent.map((item) => {
                   const IconComponent = getContentTypeIcon(item.type)
                   return (
                     <Card key={item.id} className="p-4 hover:shadow-md transition-shadow">
@@ -304,15 +391,15 @@ export default function ProductionPipelinePage() {
                           <div className="flex items-center gap-2 mb-2">
                             <IconComponent className="h-4 w-4 text-gray-500" />
                             <Badge variant="outline" className="text-xs">
-                              {item.framework}
+                              {item.content_type}
                             </Badge>
                           </div>
                           <h4 className="font-medium text-sm mb-2 line-clamp-2">{item.title}</h4>
                           <div className="space-y-2">
                             <Progress value={item.progress} className="h-2" />
                             <div className="flex justify-between text-xs text-gray-500">
-                              <span>{item.wordCount} words</span>
-                              <span>{item.modified}</span>
+                              <span>{item.word_count || 0} words</span>
+                              <span>{new Date(item.updated_at || item.created_at).toLocaleDateString()}</span>
                             </div>
                           </div>
                           <div className="flex gap-1 mt-3">
@@ -336,14 +423,14 @@ export default function ProductionPipelinePage() {
             {/* Scheduled Column */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-orange-600">Scheduled ({sampleContent.scheduled.length})</h3>
+                <h3 className="font-semibold text-orange-600">Scheduled ({scheduledContent.length})</h3>
                 <Button variant="ghost" size="sm" onClick={() => handleSelectAll("scheduled")}>
                   Select All
                 </Button>
               </div>
 
               <div className="space-y-3">
-                {sampleContent.scheduled.map((item) => {
+                {publishedContent.map((item) => {
                   const IconComponent = getContentTypeIcon(item.type)
                   return (
                     <Card key={item.id} className="p-4 hover:shadow-md transition-shadow">
@@ -356,14 +443,14 @@ export default function ProductionPipelinePage() {
                           <div className="flex items-center gap-2 mb-2">
                             <IconComponent className="h-4 w-4 text-gray-500" />
                             <Badge variant="outline" className="text-xs">
-                              {item.framework}
+                              {item.content_type}
                             </Badge>
                           </div>
                           <h4 className="font-medium text-sm mb-2 line-clamp-2">{item.title}</h4>
                           <div className="space-y-2">
                             <div className="flex items-center gap-2 text-xs text-gray-600">
                               <Clock className="h-3 w-3" />
-                              {item.scheduledDate}
+                              {item.scheduled_date ? new Date(item.scheduled_date).toLocaleDateString() : 'Not scheduled'}
                             </div>
                             <div className="flex items-center gap-2 text-xs text-gray-600">
                               <CheckCircle className="h-3 w-3 text-green-500" />
@@ -411,19 +498,17 @@ export default function ProductionPipelinePage() {
                           <div className="flex items-center gap-2 mb-2">
                             <IconComponent className="h-4 w-4 text-gray-500" />
                             <Badge variant="outline" className="text-xs">
-                              {item.framework}
+                              {item.content_type}
                             </Badge>
                           </div>
                           <h4 className="font-medium text-sm mb-2 line-clamp-2">{item.title}</h4>
                           <div className="space-y-2">
                             {getPerformanceBadge(item.performance)}
                             <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-                              <div>{item.views.toLocaleString()} views</div>
-                              <div>{item.likes} likes</div>
-                              <div>{item.comments} comments</div>
-                              <div>{item.shares} shares</div>
+                              <div>{item.linkedin_post_url ? 'Published' : 'Draft'}</div>
+                              <div>{new Date(item.created_at).toLocaleDateString()}</div>
                             </div>
-                            <p className="text-xs text-gray-500">{item.publishedDate}</p>
+                            <p className="text-xs text-gray-500">{new Date(item.published_at || item.created_at).toLocaleDateString()}</p>
                           </div>
                           <div className="flex gap-1 mt-3">
                             <Button size="sm" variant="outline" className="text-xs bg-transparent">
@@ -446,14 +531,14 @@ export default function ProductionPipelinePage() {
             {/* Archived Column */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-600">Archived ({sampleContent.archived.length})</h3>
+                <h3 className="font-semibold text-gray-600">Archived ({archivedContent.length})</h3>
                 <Button variant="ghost" size="sm" onClick={() => handleSelectAll("archived")}>
                   Select All
                 </Button>
               </div>
 
               <div className="space-y-3">
-                {sampleContent.archived.map((item) => {
+                {archivedContent.map((item) => {
                   const IconComponent = getContentTypeIcon(item.type)
                   return (
                     <Card key={item.id} className="p-4 hover:shadow-md transition-shadow opacity-75">
@@ -466,17 +551,17 @@ export default function ProductionPipelinePage() {
                           <div className="flex items-center gap-2 mb-2">
                             <IconComponent className="h-4 w-4 text-gray-500" />
                             <Badge variant="outline" className="text-xs">
-                              {item.framework}
+                              {item.content_type}
                             </Badge>
                           </div>
                           <h4 className="font-medium text-sm mb-2 line-clamp-2">{item.title}</h4>
                           <div className="space-y-2">
                             <div className="text-xs text-gray-600">
-                              <div>Final: {item.finalViews.toLocaleString()} views</div>
-                              <div>{item.finalEngagement} total engagement</div>
+                              <div>Archived: {new Date(item.updated_at || item.created_at).toLocaleDateString()}</div>
+                              <div>{item.word_count || 0} words</div>
                             </div>
                             <p className="text-xs text-gray-500">
-                              Archived {item.archivedDate} • {item.reason}
+                              Archived {new Date(item.updated_at || item.created_at).toLocaleDateString()}
                             </p>
                           </div>
                           <div className="flex gap-1 mt-3">
