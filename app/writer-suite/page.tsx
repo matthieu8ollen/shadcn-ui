@@ -969,11 +969,26 @@ const saveCompletedPost = async () => {
                         <Button
                           variant="default"
                           size="sm"
-                          onClick={() => console.log('Save clicked')}
+                          onClick={saveCompletedPost}
+                          disabled={isSaving}
                           className="bg-green-600 hover:bg-green-700 text-white flex-1 mt-2"
                         >
-                          <Save className="h-4 w-4 mr-1" />
-                          Save Post
+                          {isSaving ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Saving...
+                            </>
+                          ) : saveSuccess ? (
+                            <>
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Saved!
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-4 w-4 mr-1" />
+                              Save Post
+                            </>
+                          )}
                         </Button>
                       </div>
                     </CardContent>
