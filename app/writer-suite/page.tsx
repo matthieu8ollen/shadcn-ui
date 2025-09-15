@@ -620,7 +620,7 @@ const populateVariablesFromAI = (variableName: string) => {
     return sectionTemplate
   }
   return 'Select a section to view template'
-} else {
+  } else {
   // Show generated content for CURRENT section using all_filled_variables
   if (contentData?.generatedContent?.all_filled_variables && currentSectionData) {
     console.log('✅ Using generated content for section:', currentSection)
