@@ -153,16 +153,22 @@ const getPerformanceBadge = (performance: string) => {
 export default function ProductionPipelinePage() {
   const { user } = useAuth()
   const {
-    draftContent,
-    scheduledContent,
-    publishedContent,
-    archivedContent,
+    draftContent: rawDraftContent,
+    scheduledContent: rawScheduledContent,
+    publishedContent: rawPublishedContent,
+    archivedContent: rawArchivedContent,
     loadingContent,
     refreshContent,
     updateContent,
     publishContent,
     deleteContent
   } = useContent()
+
+  // Add safe defaults to prevent undefined errors
+  const draftContent = rawDraftContent || []
+  const scheduledContent = rawScheduledContent || []
+  const publishedContent = rawPublishedContent || []
+  const archivedContent = rawArchivedContent || []
   const { showToast } = useToast()
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const [filterType, setFilterType] = useState<string>("all")
@@ -245,7 +251,7 @@ export default function ProductionPipelinePage() {
     }
   }
   // Add this loading check right before the existing return statement
-  if (loadingContent && draftContent.length === 0) {
+  if (loadingContent && (!draftContent || draftContent.length === 0)) {
     return (
       <div className="flex h-screen bg-background">
         <SidebarNavigation />
@@ -444,7 +450,7 @@ export default function ProductionPipelinePage() {
               </div>
 
               <div className="space-y-3">
-                {publishedContent.map((item) => {
+                {scheduledContent.map((item) => {
                   const IconComponent = getContentTypeIcon(item.type)
                   return (
                     <Card key={item.id} className="p-4 hover:shadow-md transition-shadow">
@@ -492,14 +498,14 @@ export default function ProductionPipelinePage() {
             {/* Published Column */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-green-600">Published ({sampleContent.published.length})</h3>
+                <h3 className="font-semibold text-green-600">Published ({publishedContent.length})</h3>
                 <Button variant="ghost" size="sm" onClick={() => handleSelectAll("published")}>
                   Select All
                 </Button>
               </div>
 
               <div className="space-y-3">
-                {sampleContent.published.map((item) => {
+                {scheduledContent.map((item) => {
                   const IconComponent = getContentTypeIcon(item.type)
                   return (
                     <Card key={item.id} className="p-4 hover:shadow-md transition-shadow">
@@ -517,10 +523,10 @@ export default function ProductionPipelinePage() {
                           </div>
                           <h4 className="font-medium text-sm mb-2 line-clamp-2">{item.title}</h4>
                           <div className="space-y-2">
-                            {getPerformanceBadge(item.performance)}
+                            <Badge className="bg-green-100 text-green-800">Published</Badge>
                             <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-                              <div>{item.linkedin_post_url ? 'Published' : 'Draft'}</div>
-                              <div>{new Date(item.created_at).toLocaleDateString()}</div>
+                              <div>{item.word_count || 0} words</div>
+                              <div>Published</div>
                             </div>
                             <p className="text-xs text-gray-500">{new Date(item.published_at || item.created_at).toLocaleDateString()}</p>
                           </div>
