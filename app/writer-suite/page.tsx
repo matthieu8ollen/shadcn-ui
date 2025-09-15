@@ -59,6 +59,7 @@ export default function WriterSuitePage() {
   const [isToolbarVisible, setIsToolbarVisible] = React.useState(false)
   const [activeGuidanceCard, setActiveGuidanceCard] = React.useState<string | null>(null)
   const [isGenerating, setIsGenerating] = React.useState(false)
+  const [isFullPostPreviewOpen, setIsFullPostPreviewOpen] = React.useState(false)
   
   // Real data state
   const [formula, setFormula] = React.useState<any>(null)
@@ -891,56 +892,7 @@ console.log("generatePreview function closed properly"); // Move this OUTSIDE th
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            // Generate full post preview by combining all sections
-                            const fullPost = formulaSections.map((section, index) => {
-                              const sectionNum = index + 1
-                              
-                              if (contentData?.generatedContent?.all_filled_variables) {
-                                // Use generated content if available
-                                const sectionVariables: Record<string, string> = {}
-                                
-                                Object.entries(contentData.generatedContent.all_filled_variables).forEach(([variable, data]: [string, any]) => {
-                                  if (data.section_order === sectionNum) {
-                                    sectionVariables[variable] = data.value
-                                  }
-                                })
-                                
-                                let sectionContent = section.section_template || ''
-                                Object.entries(sectionVariables).forEach(([variable, value]) => {
-                                  const variablePattern = new RegExp(`\\[${variable}\\]`, 'g')
-                                  sectionContent = sectionContent.replace(variablePattern, value)
-                                })
-                                
-                                return sectionContent
-                              } else {
-                                // Fallback to user input variables
-                                let sectionContent = section.section_template || ''
-                                section.variables.forEach((variable: string) => {
-                                  const userInput = variables[variable]
-                                  const variablePattern = new RegExp(`\\[${variable.toUpperCase()}\\]`, 'g')
-                                  if (userInput) {
-                                    sectionContent = sectionContent.replace(variablePattern, userInput)
-                                  }
-                                })
-                                return sectionContent
-                              }
-                            }).join('\n\n')
-                            
-                            // Open full post preview in a new window
-                            const previewWindow = window.open('', '_blank', 'width=600,height=800')
-                            previewWindow?.document.write(`
-                              <html>
-                                <head><title>Full Post Preview</title></head>
-                                <body style="font-family: Arial, sans-serif; padding: 20px; line-height: 1.6;">
-                                  <h2>Complete LinkedIn Post Preview</h2>
-                                  <div style="border: 1px solid #ccc; padding: 20px; background: #f9f9f9; white-space: pre-wrap;">
-                                    ${fullPost}
-                                  </div>
-                                </body>
-                              </html>
-                            `)
-                          }}
+                          onClick={() => setIsFullPostPreviewOpen(true)}
                           className="bg-blue-600 hover:bg-blue-700 text-white flex-1 mt-2"
                         >
                           <Eye className="h-4 w-4 mr-1" />
@@ -1024,7 +976,113 @@ console.log("generatePreview function closed properly"); // Move this OUTSIDE th
             </div>
           </GridBeams>
         </div>
+      </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          </GridBeams>
+        </div>
       </div>
+
+      {/* Full Post Preview Overlay */}
+      {isFullPostPreviewOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">Complete LinkedIn Post Preview</h2>
+                <button
+                  onClick={() => setIsFullPostPreviewOpen(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+              
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-gray-100">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center text-white font-semibold text-lg">
+                      YN
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900">Your Name</h3>
+                      </div>
+                      <p className="text-sm text-gray-600">Finance Professional • 1st</p>
+                      <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                        <span>2h</span>
+                        <span>•</span>
+                        <Globe className="h-3 w-3" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4">
+                  <div className="text-gray-900 leading-relaxed whitespace-pre-wrap">
+                    {formulaSections.map((section, index) => {
+                      const sectionNum = index + 1
+                      
+                      if (contentData?.generatedContent?.all_filled_variables) {
+                        const sectionVariables: Record<string, string> = {}
+                        
+                        Object.entries(contentData.generatedContent.all_filled_variables).forEach(([variable, data]: [string, any]) => {
+                          if (data.section_order === sectionNum) {
+                            sectionVariables[variable] = data.value
+                          }
+                        })
+                        
+                        let sectionContent = section.section_template || ''
+                        Object.entries(sectionVariables).forEach(([variable, value]) => {
+                          const variablePattern = new RegExp(`\\[${variable}\\]`, 'g')
+                          sectionContent = sectionContent.replace(variablePattern, value)
+                        })
+                        
+                        return sectionContent
+                      } else {
+                        let sectionContent = section.section_template || ''
+                        section.variables.forEach((variable: string) => {
+                          const userInput = variables[variable]
+                          const variablePattern = new RegExp(`\\[${variable.toUpperCase()}\\]`, 'g')
+                          if (userInput) {
+                            sectionContent = sectionContent.replace(variablePattern, userInput)
+                          }
+                        })
+                        return sectionContent
+                      }
+                    }).join('\n\n')}
+                  </div>
+                </div>
+
+                <div className="px-4 py-3 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-6">
+                      <button className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors">
+                        <ThumbsUp className="h-5 w-5" />
+                        <span className="text-sm font-medium">Like</span>
+                      </button>
+                      <button className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors">
+                        <MessageCircle className="h-5 w-5" />
+                        <span className="text-sm font-medium">Comment</span>
+                      </button>
+                      <button className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors">
+                        <Repeat2 className="h-5 w-5" />
+                        <span className="text-sm font-medium">Repost</span>
+                      </button>
+                      <button className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors">
+                        <Send className="h-5 w-5" />
+                        <span className="text-sm font-medium">Send</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="fixed right-6 top-1/2 transform -translate-y-1/2 z-50">
         {!isToolbarVisible ? (
