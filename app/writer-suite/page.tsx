@@ -976,12 +976,7 @@ console.log("generatePreview function closed properly"); // Move this OUTSIDE th
             </div>
           </GridBeams>
         </div>
-      </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </div>
-          </GridBeams>
+      </GridBeams>
         </div>
       </div>
 
