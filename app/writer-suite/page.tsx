@@ -652,7 +652,7 @@ const populateVariablesFromAI = (variableName: string) => {
   }
   
   return 'No generated content available for this section'
-}}
+}
 
 console.log("generatePreview function closed properly"); // Move this OUTSIDE the function
 
