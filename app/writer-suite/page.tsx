@@ -41,12 +41,13 @@ import {
   Send,
   Globe,
   X,
+  CheckCircle,
 } from "lucide-react"
 import React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/contexts/AuthContext"
-import { getContentFormulas, getContentIdea, type ContentFormula, type FormulaSection } from "@/lib/supabase"
+import { getContentFormulas, getContentIdea, saveGeneratedContent, type ContentFormula, type FormulaSection } from "@/lib/supabase"
 
 export default function WriterSuitePage() {
   const router = useRouter()
@@ -60,6 +61,8 @@ export default function WriterSuitePage() {
   const [activeGuidanceCard, setActiveGuidanceCard] = React.useState<string | null>(null)
   const [isGenerating, setIsGenerating] = React.useState(false)
   const [isFullPostPreviewOpen, setIsFullPostPreviewOpen] = React.useState(false)
+  const [isSaving, setIsSaving] = React.useState(false)
+  const [saveSuccess, setSaveSuccess] = React.useState(false)
   
   // Real data state
   const [formula, setFormula] = React.useState<any>(null)
@@ -655,6 +658,71 @@ const populateVariablesFromAI = (variableName: string) => {
 }}
 
 console.log("generatePreview function closed properly"); // Move this OUTSIDE the function
+  // Save completed post function
+const saveCompletedPost = async () => {
+  if (!user) return
+  
+  setIsSaving(true)
+  try {
+    // Generate the complete post content
+    const completePost = formulaSections.map((section, index) => {
+      const sectionNum = index + 1
+      let sectionContent = section.section_template || ''
+      
+      // Process each variable for this section - prioritize user input
+      section.variables.forEach((variable: string) => {
+        const userInput = variables[variable]
+        let valueToUse = userInput
+        
+        // If no user input, fall back to AI-generated content
+        if (!userInput && contentData?.generatedContent?.all_filled_variables) {
+          const backendVariableName = variable.toUpperCase()
+          const aiData = contentData.generatedContent.all_filled_variables[backendVariableName]
+          if (aiData?.value && aiData.section_order === sectionNum) {
+            valueToUse = aiData.value
+          }
+        }
+        
+        // Replace the variable in the template
+        if (valueToUse) {
+          const variablePattern = new RegExp(`\\[${variable.toUpperCase()}\\]`, 'g')
+          sectionContent = sectionContent.replace(variablePattern, valueToUse)
+        }
+      })
+      
+      return sectionContent
+    }).join('\n\n')
+
+    // Save to database
+    const { data, error } = await saveGeneratedContent({
+      user_id: user.id,
+      content_text: completePost,
+      content_type: 'framework',
+      tone_used: user?.user_metadata?.preferred_tone || 'professional',
+      prompt_input: ideationData?.title || 'Writer Suite Creation',
+      is_saved: true,
+      status: 'draft',
+      title: ideationData?.title || 'Untitled Post',
+      idea_id: ideaId || undefined,
+      source_page: 'writer-suite',
+      word_count: completePost.length
+    })
+
+    if (data) {
+      setSaveSuccess(true)
+      console.log('✅ Post saved successfully:', data.id)
+      
+      // Show success for 3 seconds
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } else if (error) {
+      console.error('❌ Error saving post:', error)
+    }
+  } catch (error) {
+    console.error('❌ Error saving post:', error)
+  } finally {
+    setIsSaving(false)
+  }
+}
 
   // Add loading checks here - right before the main return
   if (loading) {
@@ -898,6 +966,40 @@ console.log("generatePreview function closed properly"); // Move this OUTSIDE th
                           <Eye className="h-4 w-4 mr-1" />
                           Preview Full Post
                         </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsFullPostPreviewOpen(true)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white flex-1 mt-2"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Preview Full Post
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={saveCompletedPost}
+                          disabled={isSaving}
+                          className="bg-green-600 hover:bg-green-700 text-white flex-1 mt-2"
+                        >
+                          {isSaving ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Saving...
+                            </>
+                          ) : saveSuccess ? (
+                            <>
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Saved!
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-4 w-4 mr-1" />
+                              Save Post
+                            </>
+                          )}
+                        </Button>
+                      </div>
                       </div>
                     </CardContent>
                   </Card>
