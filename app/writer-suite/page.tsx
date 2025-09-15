@@ -1017,34 +1017,30 @@ console.log("generatePreview function closed properly"); // Move this OUTSIDE th
                   <div className="text-gray-900 leading-relaxed whitespace-pre-wrap">
                     {formulaSections.map((section, index) => {
                       const sectionNum = index + 1
+                      let sectionContent = section.section_template || ''
                       
-                      if (contentData?.generatedContent?.all_filled_variables) {
-                        const sectionVariables: Record<string, string> = {}
+                      // Process each variable for this section
+                      section.variables.forEach((variable: string) => {
+                        const userInput = variables[variable] // Check user's manual input first
+                        let valueToUse = userInput // Default to user input
                         
-                        Object.entries(contentData.generatedContent.all_filled_variables).forEach(([variable, data]: [string, any]) => {
-                          if (data.section_order === sectionNum) {
-                            sectionVariables[variable] = data.value
+                        // If no user input, fall back to AI-generated content
+                        if (!userInput && contentData?.generatedContent?.all_filled_variables) {
+                          const backendVariableName = variable.toUpperCase()
+                          const aiData = contentData.generatedContent.all_filled_variables[backendVariableName]
+                          if (aiData?.value && aiData.section_order === sectionNum) {
+                            valueToUse = aiData.value
                           }
-                        })
+                        }
                         
-                        let sectionContent = section.section_template || ''
-                        Object.entries(sectionVariables).forEach(([variable, value]) => {
-                          const variablePattern = new RegExp(`\\[${variable}\\]`, 'g')
-                          sectionContent = sectionContent.replace(variablePattern, value)
-                        })
-                        
-                        return sectionContent
-                      } else {
-                        let sectionContent = section.section_template || ''
-                        section.variables.forEach((variable: string) => {
-                          const userInput = variables[variable]
+                        // Replace the variable in the template
+                        if (valueToUse) {
                           const variablePattern = new RegExp(`\\[${variable.toUpperCase()}\\]`, 'g')
-                          if (userInput) {
-                            sectionContent = sectionContent.replace(variablePattern, userInput)
-                          }
-                        })
-                        return sectionContent
-                      }
+                          sectionContent = sectionContent.replace(variablePattern, valueToUse)
+                        }
+                      })
+                      
+                      return sectionContent
                     }).join('\n\n')}
                   </div>
                 </div>
