@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Send, Home, Lightbulb, MessageCircle } from "lucide-react"
 import React from "react"
+import { useRouter } from "next/navigation"
 
 export default function MarcusChatPage() {
   const { user } = useAuth()
@@ -44,7 +45,8 @@ const [topicsData, setTopicsData] = React.useState([])
 const [selectedHook, setSelectedHook] = React.useState('')
 const [selectedHookIndex, setSelectedHookIndex] = React.useState(0)
 const [waitingForClarification, setWaitingForClarification] = React.useState(false)
-
+const router = useRouter()
+  
   // Webhook integration functions
 const callMarcusAI = async (userInput: string, conversationContext: any, contentPreference: string, sessionId: string) => {
   const N8N_WEBHOOK_URL = process.env.NEXT_PUBLIC_MARCUS_WEBHOOK_URL || 'https://testcyber.app.n8n.cloud/webhook/74cc6b41-dc95-4bb4-b0ea-adc8f6fa56b1';
@@ -478,26 +480,63 @@ const pollForAIResponse = async (sessionId: string) => {
           </button>
           
           <button
-            onClick={() => {
-              // Proceed to content creation
-              if (topicsData?.[0]) {
-                const topic = topicsData[0] as any
-                const ideationData = {
-                  topic: topic.title,
-                  angle: selectedHook,
-                  takeaways: topic.key_takeaways || [],
-                  source_page: 'talk_with_marcus' as const,
-                  session_id: currentSessionId || ''
-                }
-                // Navigate to content creation with this data
-                console.log('Navigate to content creation with:', ideationData)
-              }
-              setShowTopicOverlay(false)
-            }}
-            className="px-6 py-3 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition"
-          >
-            Create Content Now
-          </button>
+  onClick={async () => {
+    if (topicsData?.[0]) {
+      const topic = topicsData[0] as any
+      
+      // Save the idea to database first (optional - for tracking)
+      const savedIdea = await createContentIdea({
+        user_id: user.id,
+        title: topic?.title || 'AI Generated Topic',
+        description: topic?.personal_story || selectedHook,
+        tags: topic?.key_takeaways || [],
+        content_pillar: 'ai_generated',
+        source_type: 'ai_generated',
+        source_data: {
+          session_id: currentSessionId,
+          source_page: 'talk_with_marcus',
+          content_type: topic?.content_type || 'personal_story',
+          selected_hook: selectedHook,
+          selected_hook_index: selectedHookIndex,
+          hooks: topic?.hooks || [],
+          key_takeaways: topic?.key_takeaways || [],
+          personal_story: topic?.personal_story || '',
+          pain_points_and_struggles: topic?.pain_points_and_struggles || '',
+          concrete_evidence: topic?.concrete_evidence || '',
+          audience_and_relevance: topic?.audience_and_relevance || '',
+          raw_ai_response: topic
+        },
+        status: 'active'
+      })
+      
+      // Navigate to formula matching with ideation data
+      const ideationParams = new URLSearchParams({
+        ideaId: savedIdea?.data?.id || '',
+        title: encodeURIComponent(topic?.title || 'AI Generated Topic'),
+        description: encodeURIComponent(selectedHook),
+        contentPillar: 'ai_generated',
+        tags: JSON.stringify(topic?.key_takeaways || []),
+        sourceData: JSON.stringify({
+          content_type: topic?.content_type || 'personal_story',
+          selected_hook: selectedHook,
+          selected_hook_index: selectedHookIndex,
+          hooks: topic?.hooks || [],
+          key_takeaways: topic?.key_takeaways || [],
+          personal_story: topic?.personal_story || '',
+          pain_points_and_struggles: topic?.pain_points_and_struggles || '',
+          concrete_evidence: topic?.concrete_evidence || '',
+          audience_and_relevance: topic?.audience_and_relevance || ''
+        })
+      })
+      
+      router.push(`/formula-matching?${ideationParams.toString()}`)
+    }
+    setShowTopicOverlay(false)
+  }}
+  className="px-6 py-3 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition"
+>
+  Create Content Now
+</button>
         </div>
       </div>
     </div>
