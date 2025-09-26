@@ -309,6 +309,7 @@ const filteredIdeas = currentIdeas.filter((idea) => {
                           onSelect={handleSelectItem}
                           type={idea.content_pillar || 'general'}
                           onClick={() => setSelectedIdeaForOverlay(idea)}
+                          className="overflow-hidden"
                         >
                           <div className="space-y-3">
                             <div>
@@ -387,9 +388,9 @@ const filteredIdeas = currentIdeas.filter((idea) => {
                 </div>
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-2">Tags</h4>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 overflow-hidden">
                     {selectedIdeaForOverlay.tags.map((tag, index) => (
-                      <span key={index} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
+                      <span key={index} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full shrink-0">
                         {tag}
                       </span>
                     ))}
