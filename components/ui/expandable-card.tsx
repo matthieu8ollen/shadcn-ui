@@ -58,7 +58,7 @@ export function ExpandableCard({
 
   return (
     <Card
-      className={`relative bg-muted/50 shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.15)] transition-all duration-300 hover:-translate-y-1 ${className}`}
+      className={`relative bg-muted/50 shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.15)] transition-all duration-300 hover:-translate-y-1 overflow-hidden ${className}`}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
@@ -82,13 +82,13 @@ export function ExpandableCard({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 overflow-hidden">
         <CardDescription className="text-sm leading-relaxed text-gray-600">{description}</CardDescription>
 
         {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 overflow-hidden">
             {tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="text-xs border-emerald-200 text-emerald-700">
+              <Badge key={tag} variant="outline" className="text-xs border-emerald-200 text-emerald-700 shrink-0">
                 {tag}
               </Badge>
             ))}
