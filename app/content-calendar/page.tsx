@@ -454,7 +454,8 @@ export default function CalendarPage() {
               <RefreshCw className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-4" />
               <p className="text-gray-600">Loading your calendar...</p>
             </div>
-          </div>
+                      </div>
+          </GridBeams>
         </div>
       </div>
     )
@@ -473,7 +474,7 @@ export default function CalendarPage() {
             rayOpacity={0.2}
             gridSize={50}
           >
-          <div className="relative z-10 p-6 space-y-6">
+            <div className="p-6 space-y-6">
             {/* Breadcrumb */}
             <Breadcrumb>
               <BreadcrumbList>
