@@ -60,7 +60,28 @@ export default function ProductionPipelinePage() {
   } = useContent()
   const { toast } = useToast()
   const [selectedItems, setSelectedItems] = useState<string[]>([])
+const [activeFilter, setActiveFilter] = useState<'draft' | 'scheduled' | 'published' | 'archived'>('draft')
 
+const getCurrentContent = () => {
+  switch (activeFilter) {
+    case 'draft': return draftContent
+    case 'scheduled': return scheduledContent
+    case 'published': return publishedContent
+    case 'archived': return archivedContent
+    default: return draftContent
+  }
+}
+
+const getEmptyStateMessage = () => {
+  switch (activeFilter) {
+    case 'draft': return 'Create your first post to get started!'
+    case 'scheduled': return 'Schedule content from your drafts.'
+    case 'published': return 'Published content will appear here.'
+    case 'archived': return 'Archived content will appear here.'
+    default: return ''
+  }
+}
+  
   useEffect(() => {
     if (user) {
       refreshContent()
@@ -319,17 +340,139 @@ export default function ProductionPipelinePage() {
                 </Button>
               </div>
 
-              {/* Stats Cards */}
+              {/* Filter Stats - Clickable Cards */}
               <div className="grid grid-cols-4 gap-4">
-                <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">Drafts</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-blue-600">{draftContent.length}</div>
-                    <p className="text-xs text-gray-500 mt-1">Ready to edit</p>
+                <Card 
+                  className={`cursor-pointer transition-all duration-200 bg-white/80 backdrop-blur-sm border-2 hover:shadow-lg group ${
+                    activeFilter === 'draft' ? 'border-blue-500 shadow-md' : 'border-gray-200'
+                  }`}
+                  onClick={() => setActiveFilter('draft')}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Edit3 className={`w-5 h-5 transition-colors ${
+                        activeFilter === 'draft' ? 'text-blue-600' : 'text-gray-600 group-hover:text-blue-600'
+                      }`} />
+                      <div className={`text-2xl font-bold transition-colors ${
+                        activeFilter === 'draft' ? 'text-blue-600' : 'text-gray-900'
+                      }`}>
+                        {draftContent.length}
+                      </div>
+                    </div>
+                    <p className={`text-sm font-medium transition-colors ${
+                      activeFilter === 'draft' ? 'text-blue-600' : 'text-gray-600'
+                    }`}>
+                      Drafts
+                    </p>
                   </CardContent>
                 </Card>
+                
+                <Card 
+                  className={`cursor-pointer transition-all duration-200 bg-white/80 backdrop-blur-sm border-2 hover:shadow-lg group ${
+                    activeFilter === 'scheduled' ? 'border-yellow-500 shadow-md' : 'border-gray-200'
+                  }`}
+                  onClick={() => setActiveFilter('scheduled')}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Clock className={`w-5 h-5 transition-colors ${
+                        activeFilter === 'scheduled' ? 'text-yellow-600' : 'text-gray-600 group-hover:text-yellow-600'
+                      }`} />
+                      <div className={`text-2xl font-bold transition-colors ${
+                        activeFilter === 'scheduled' ? 'text-yellow-600' : 'text-gray-900'
+                      }`}>
+                        {scheduledContent.length}
+                      </div>
+                    </div>
+                    <p className={`text-sm font-medium transition-colors ${
+                      activeFilter === 'scheduled' ? 'text-yellow-600' : 'text-gray-600'
+                    }`}>
+                      Scheduled
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                <Card 
+                  className={`cursor-pointer transition-all duration-200 bg-white/80 backdrop-blur-sm border-2 hover:shadow-lg group ${
+                    activeFilter === 'published' ? 'border-green-500 shadow-md' : 'border-gray-200'
+                  }`}
+                  onClick={() => setActiveFilter('published')}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <CheckCircle className={`w-5 h-5 transition-colors ${
+                        activeFilter === 'published' ? 'text-green-600' : 'text-gray-600 group-hover:text-green-600'
+                      }`} />
+                      <div className={`text-2xl font-bold transition-colors ${
+                        activeFilter === 'published' ? 'text-green-600' : 'text-gray-900'
+                      }`}>
+                        {publishedContent.length}
+                      </div>
+                    </div>
+                    <p className={`text-sm font-medium transition-colors ${
+                      activeFilter === 'published' ? 'text-green-600' : 'text-gray-600'
+                    }`}>
+                      Published
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                <Card 
+                  className={`cursor-pointer transition-all duration-200 bg-white/80 backdrop-blur-sm border-2 hover:shadow-lg group ${
+                    activeFilter === 'archived' ? 'border-gray-500 shadow-md' : 'border-gray-200'
+                  }`}
+                  onClick={() => setActiveFilter('archived')}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Archive className={`w-5 h-5 transition-colors ${
+                        activeFilter === 'archived' ? 'text-gray-600' : 'text-gray-600 group-hover:text-gray-600'
+                      }`} />
+                      <div className={`text-2xl font-bold transition-colors ${
+                        activeFilter === 'archived' ? 'text-gray-600' : 'text-gray-900'
+                      }`}>
+                        {archivedContent.length}
+                      </div>
+                    </div>
+                    <p className={`text-sm font-medium transition-colors ${
+                      activeFilter === 'archived' ? 'text-gray-600' : 'text-gray-600'
+                    }`}>
+                      Archived
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Content Section - Shows Only Selected Filter */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold text-emerald-800 capitalize">
+                    {activeFilter} Content ({getCurrentContent().length})
+                  </h2>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {getCurrentContent().length > 0 ? (
+                    getCurrentContent().map((content) => (
+                      <ContentCard key={content.id} content={content} columnType={activeFilter} />
+                    ))
+                  ) : (
+                    <div className="col-span-full">
+                      <Card className="border-dashed border-2 border-gray-300 bg-gray-50/50">
+                        <CardContent className="p-12 text-center">
+                          <Archive className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                          <h4 className="font-medium text-gray-600 mb-2">
+                            No {activeFilter} content
+                          </h4>
+                          <p className="text-sm text-gray-500">
+                            {getEmptyStateMessage()}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+                </div>
+              </div>
                 
                 <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
                   <CardHeader className="pb-2">
