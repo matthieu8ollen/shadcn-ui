@@ -44,7 +44,8 @@ import {
   TrendingUp,
   AlertCircle,
   Sparkles,
-  Archive
+  Archive,
+  Home
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useContent } from "@/contexts/ContentContext"
