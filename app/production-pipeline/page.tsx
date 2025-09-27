@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ContentLayout } from "@/components/admin-panel/content-layout"
+import { SidebarNavigation } from "@/components/sidebar-navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -353,8 +353,28 @@ export default function ProductionPipelinePage() {
   }
 
   return (
-    <ContentLayout title="Production Pipeline">
-      {/* Header Actions */}
+    <div className="flex h-screen bg-white">
+      <SidebarNavigation />
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6 space-y-8">
+            {/* Breadcrumb */}
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="/" className="flex items-center gap-2">
+                    <Home className="h-4 w-4" />
+                    Dashboard
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>Production Pipeline</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+
+            {/* Header Actions */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-bold">Production Pipeline</h2>
@@ -545,6 +565,9 @@ export default function ProductionPipelinePage() {
           )}
         </DialogContent>
       </Dialog>
-    </ContentLayout>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
