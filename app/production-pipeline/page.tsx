@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useToast } from "@/components/ui/use-toast"
 import {
   RefreshCw,
   MoreVertical,
@@ -39,7 +40,6 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useContent } from "@/contexts/ContentContext"
-import { useToast } from "@/hooks/use-toast"
 
 export default function ProductionPipelinePage() {
   const { user } = useAuth()
