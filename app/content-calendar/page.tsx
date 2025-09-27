@@ -465,7 +465,14 @@ export default function CalendarPage() {
       <SidebarNavigation />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <div className="flex-1 overflow-y-auto">
-          <GridBeams className="absolute inset-0 pointer-events-none opacity-30" />
+          <GridBeams
+            className="min-h-full"
+            backgroundColor="rgba(255, 255, 255, 0.95)"
+            gridColor="rgba(16, 185, 129, 0.1)"
+            rayCount={12}
+            rayOpacity={0.2}
+            gridSize={50}
+          >
           <div className="relative z-10 p-6 space-y-6">
             {/* Breadcrumb */}
             <Breadcrumb>
