@@ -8,129 +8,143 @@ import {
   updateGeneratedContent,
   getGeneratedContent,
   scheduleContent,
-  ContentCalendar,
   supabase
 } from '../lib/supabase'
 
+// Enhanced interfaces with cyberminds functionality
+interface ScheduledContentWithCalendar extends GeneratedContent {
+  scheduled_date: string
+  scheduled_time?: string
+  published_at?: string
+  linkedin_post_url?: string
+  image_url?: string
+}
+
 interface ContentContextType {
-  // Content Management
+  // Content Management (from cyberminds working implementation)
   draftContent: GeneratedContent[]
   scheduledContent: GeneratedContent[]
   publishedContent: GeneratedContent[]
   archivedContent: GeneratedContent[]
   loadingContent: boolean
   
-  // Actions
-  saveDraft: (content: Omit<GeneratedContent, 'id' | 'created_at' | 'user_id'>, mode?: 'marcus' | 'standard') => Promise<GeneratedContent | null>
-  updateContent: (id: string, updates: Partial<GeneratedContent>) => Promise<boolean>
-  scheduleContentItem: (contentId: string, date: string, time: string) => Promise<boolean>
-  publishContent: (contentId: string) => Promise<boolean>
+  // Actions (enhanced from cyberminds)
+  saveDraft: (content: Omit<GeneratedContent, 'id' | 'created_at' | 'user_id'>, mode?: string) => Promise<GeneratedContent | null>
+  updateContent: (contentId: string, updates: Partial<GeneratedContent>) => Promise<boolean>
   deleteContent: (contentId: string) => Promise<boolean>
   refreshContent: () => Promise<void>
-  attachImage: (contentId: string, imageUrl: string) => Promise<boolean>
   
-  // UI State
+  // Scheduling functionality (ported from cyberminds)
+  scheduleContentItem: (contentId: string, date: string, time: string) => Promise<boolean>
+  publishContent: (contentId: string) => Promise<boolean>
+  rescheduleContent: (contentId: string, newDate: string, newTime: string) => Promise<boolean>
+  moveToArchive: (contentId: string) => Promise<boolean>
+  
+  // Modal states (from cyberminds)
   selectedContent: GeneratedContent | null
   setSelectedContent: (content: GeneratedContent | null) => void
   showScheduleModal: boolean
   setShowScheduleModal: (show: boolean) => void
+  
+  // Calendar integration (from cyberminds)
+  getContentForDate: (date: Date) => ScheduledContentWithCalendar[]
+  getCalendarContent: () => ScheduledContentWithCalendar[]
 }
 
-const ContentContext = createContext<ContentContextType>({} as ContentContextType)
+const ContentContext = createContext<ContentContextType | undefined>(undefined)
 
-export const useContent = () => {
-  const context = useContext(ContentContext)
-  if (!context) {
-    throw new Error('useContent must be used within ContentProvider')
-  }
-  return context
-}
-
-export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function ContentProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  const [allContent, setAllContent] = useState<GeneratedContent[]>([])
-  const [loadingContent, setLoadingContent] = useState(true)
+  
+  // State management (enhanced from cyberminds)
+  const [draftContent, setDraftContent] = useState<GeneratedContent[]>([])
+  const [scheduledContent, setScheduledContent] = useState<GeneratedContent[]>([])
+  const [publishedContent, setPublishedContent] = useState<GeneratedContent[]>([])
+  const [archivedContent, setArchivedContent] = useState<GeneratedContent[]>([])
+  const [loadingContent, setLoadingContent] = useState(false)
   const [selectedContent, setSelectedContent] = useState<GeneratedContent | null>(null)
   const [showScheduleModal, setShowScheduleModal] = useState(false)
 
-  // Computed states
-  const draftContent = allContent.filter(c => c.status === 'draft' || !c.status)
-  const scheduledContent = allContent.filter(c => c.status === 'scheduled')
-  const publishedContent = allContent.filter(c => c.status === 'published')
-  const archivedContent = allContent.filter(c => c.status === 'archived')
-
-  // Load all content on mount and user change
-  useEffect(() => {
-    if (user) {
-      refreshContent()
-    }
-  }, [user])
-
+  // Enhanced content loading (from cyberminds working logic)
   const refreshContent = useCallback(async () => {
     if (!user) return
     
     setLoadingContent(true)
     try {
-      const { data, error } = await getGeneratedContent(user.id, 100)
+      const { data: allContent, error } = await supabase
+        .from('generated_content')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
       if (error) throw error
-      
-      if (data) {
-        setAllContent(data)
-      }
+
+      // Categorize content by status (cyberminds logic)
+      const drafts = allContent?.filter(item => !item.status || item.status === 'draft') || []
+      const scheduled = allContent?.filter(item => item.status === 'scheduled') || []
+      const published = allContent?.filter(item => item.status === 'published') || []
+      const archived = allContent?.filter(item => item.status === 'archived') || []
+
+      setDraftContent(drafts)
+      setScheduledContent(scheduled)
+      setPublishedContent(published)
+      setArchivedContent(archived)
     } catch (error) {
-      console.error('Error loading content:', error)
+      console.error('Error refreshing content:', error)
     } finally {
       setLoadingContent(false)
     }
   }, [user])
 
-  const clearWorkflowForContent = async (contentId: string) => {
-  try {
-    // Clear any lingering workflow states for this content
-    console.log('Workflow completed for content:', contentId)
-    // Additional cleanup logic can be added here
-  } catch (error) {
-    console.error('Error clearing workflow state:', error)
-  }
-}
+  // Enhanced save functionality (from cyberminds)
+  const saveDraft = async (
+    content: Omit<GeneratedContent, 'id' | 'created_at' | 'user_id'>,
+    mode?: string
+  ): Promise<GeneratedContent | null> => {
+    if (!user) return null
 
-  const saveDraft = async (content: Omit<GeneratedContent, 'id' | 'created_at' | 'user_id'>, mode?: 'marcus' | 'standard') => {
-  if (!user) return null
-
-  try {
-    const { data, error } = await saveGeneratedContent({
-      ...content,
-      user_id: user.id
-    })
-
-    if (error) throw error
-    
-    if (data) {
-      await refreshContent()
-      
-      // Clear workflow state when content is saved to production
-      if (content.status === 'draft') {
-        await clearWorkflowForContent(data.id)
-      }
-      
-      return data
-    }
-  } catch (error) {
-    console.error('Error saving draft:', error)
-  }
-  
-  return null
-}
-
-  const updateContent = async (id: string, updates: Partial<GeneratedContent>) => {
     try {
-      const { error } = await updateGeneratedContent(id, updates)
+      const contentData = {
+        ...content,
+        user_id: user.id,
+        status: 'draft',
+        // Store creation mode for "Continue" button functionality
+        variations_data: {
+          ...content.variations_data,
+          creation_mode: mode
+        }
+      }
+
+      const { data, error } = await supabase
+        .from('generated_content')
+        .insert(contentData)
+        .select()
+        .single()
+
       if (error) throw error
       
-      setAllContent(prev => prev.map(content => 
-        content.id === id ? { ...content, ...updates } : content
-      ))
+      await refreshContent()
+      return data
+    } catch (error) {
+      console.error('Error saving draft:', error)
+      return null
+    }
+  }
+
+  // Content update (enhanced from cyberminds)
+  const updateContent = async (contentId: string, updates: Partial<GeneratedContent>): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('generated_content')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', contentId)
+
+      if (error) throw error
       
+      await refreshContent()
       return true
     } catch (error) {
       console.error('Error updating content:', error)
@@ -138,52 +152,17 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }
 
-const scheduleContentItem = async (contentId: string, date: string, time: string) => {
-  if (!user) return false
-  
-  try {
-    // Update content with status AND scheduled date/time
-    const success = await updateContent(contentId, { 
-      status: 'scheduled',
-      scheduled_date: date,
-      scheduled_time: time
-    })
-    
-    if (!success) throw new Error('Failed to update content')
-    
-    return true
-  } catch (error) {
-    console.error('Error scheduling content:', error)
-    return false
-  }
-}
-
-  const publishContent = async (contentId: string) => {
-    try {
-      // In real app, this would call LinkedIn API
-      // For now, just update status
-      await updateContent(contentId, { 
-        status: 'published',
-        published_at: new Date().toISOString()
-      })
-      
-      return true
-    } catch (error) {
-      console.error('Error publishing content:', error)
-      return false
-    }
-  }
-
-  const deleteContent = async (contentId: string) => {
+  // Delete functionality
+  const deleteContent = async (contentId: string): Promise<boolean> => {
     try {
       const { error } = await supabase
         .from('generated_content')
         .delete()
         .eq('id', contentId)
-      
+
       if (error) throw error
       
-      setAllContent(prev => prev.filter(c => c.id !== contentId))
+      await refreshContent()
       return true
     } catch (error) {
       console.error('Error deleting content:', error)
@@ -191,36 +170,175 @@ const scheduleContentItem = async (contentId: string, date: string, time: string
     }
   }
 
-  const attachImage = async (contentId: string, imageUrl: string) => {
-  try {
-    const success = await updateContent(contentId, { image_url: imageUrl })
-    if (success) {
-      return true
-    }
-    return false
-  } catch (error) {
-    console.error('Error attaching image:', error)
-    return false
-  }
-}
+  // Scheduling functionality (ported from cyberminds)
+  const scheduleContentItem = async (contentId: string, date: string, time: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('generated_content')
+        .update({
+          status: 'scheduled',
+          scheduled_date: date,
+          scheduled_time: time,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', contentId)
 
-  const value = {
+      if (error) throw error
+      
+      await refreshContent()
+      return true
+    } catch (error) {
+      console.error('Error scheduling content:', error)
+      return false
+    }
+  }
+
+  // Publish functionality (from cyberminds)
+  const publishContent = async (contentId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('generated_content')
+        .update({
+          status: 'published',
+          published_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', contentId)
+
+      if (error) throw error
+      
+      await refreshContent()
+      return true
+    } catch (error) {
+      console.error('Error publishing content:', error)
+      return false
+    }
+  }
+
+  // Reschedule functionality (from cyberminds)
+  const rescheduleContent = async (contentId: string, newDate: string, newTime: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('generated_content')
+        .update({
+          scheduled_date: newDate,
+          scheduled_time: newTime,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', contentId)
+
+      if (error) throw error
+      
+      await refreshContent()
+      return true
+    } catch (error) {
+      console.error('Error rescheduling content:', error)
+      return false
+    }
+  }
+
+  // Archive functionality
+  const moveToArchive = async (contentId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('generated_content')
+        .update({
+          status: 'archived',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', contentId)
+
+      if (error) throw error
+      
+      await refreshContent()
+      return true
+    } catch (error) {
+      console.error('Error archiving content:', error)
+      return false
+    }
+  }
+
+  // Calendar integration functions (from cyberminds)
+  const getCalendarContent = (): ScheduledContentWithCalendar[] => {
+    return [
+      // Scheduled content with dates
+      ...scheduledContent.filter(content => content.scheduled_date).map(content => ({
+        ...content,
+        status: content.status || 'scheduled' as const,
+        scheduled_date: content.scheduled_date!,
+        scheduled_time: content.scheduled_time || '09:00'
+      })),
+      // Published content using published_at date
+      ...publishedContent.map(content => ({
+        ...content,
+        status: content.status || 'published' as const,
+        scheduled_date: content.published_at ? content.published_at.split('T')[0] : new Date().toISOString().split('T')[0],
+        scheduled_time: content.published_at ? content.published_at.split('T')[1]?.substring(0, 5) || '10:00' : '10:00'
+      })),
+      // Archived content with dates
+      ...archivedContent.filter(content => content.scheduled_date).map(content => ({
+        ...content,
+        status: content.status || 'archived' as const,
+        scheduled_date: content.scheduled_date!,
+        scheduled_time: content.scheduled_time || '09:00'
+      }))
+    ]
+  }
+
+  const getContentForDate = (date: Date): ScheduledContentWithCalendar[] => {
+    const dateString = date.toISOString().split('T')[0]
+    const calendarContent = getCalendarContent()
+    
+    return calendarContent.filter(content => {
+      if (content.status === 'published' && content.published_at) {
+        return content.published_at.split('T')[0] === dateString
+      }
+      return content.scheduled_date === dateString
+    })
+  }
+
+  // Initialize content on user change
+  useEffect(() => {
+    if (user) {
+      refreshContent()
+    } else {
+      // Clear content when user logs out
+      setDraftContent([])
+      setScheduledContent([])
+      setPublishedContent([])
+      setArchivedContent([])
+    }
+  }, [user, refreshContent])
+
+  const value: ContentContextType = {
+    // Content state
     draftContent,
     scheduledContent,
     publishedContent,
     archivedContent,
     loadingContent,
+    
+    // Actions
     saveDraft,
     updateContent,
-    scheduleContentItem,
-    publishContent,
     deleteContent,
     refreshContent,
-    attachImage,
+    
+    // Scheduling
+    scheduleContentItem,
+    publishContent,
+    rescheduleContent,
+    moveToArchive,
+    
+    // Modal state
     selectedContent,
     setSelectedContent,
     showScheduleModal,
-    setShowScheduleModal
+    setShowScheduleModal,
+    
+    // Calendar integration
+    getContentForDate,
+    getCalendarContent
   }
 
   return (
@@ -228,4 +346,12 @@ const scheduleContentItem = async (contentId: string, date: string, time: string
       {children}
     </ContentContext.Provider>
   )
+}
+
+export function useContent() {
+  const context = useContext(ContentContext)
+  if (context === undefined) {
+    throw new Error('useContent must be used within a ContentProvider')
+  }
+  return context
 }
