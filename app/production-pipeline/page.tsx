@@ -1,177 +1,69 @@
 "use client"
 
-import { useState } from "react"
-import { SidebarNavigation } from "@/components/sidebar-navigation"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
+import { useState, useEffect } from "react"
+import { ContentLayout } from "@/components/admin-panel/content-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import { Checkbox } from "@/components/ui/checkbox"
-import { TypingAnimation } from "@/components/ui/typing-animation"
-import { InteractiveHoverButton } from "@/components/interactive-hover-button"
 import {
-  Home,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   RefreshCw,
   MoreVertical,
   Calendar,
   Eye,
   Edit,
-  Copy,
   Trash2,
-  BarChart3,
   Clock,
   CheckCircle,
-  FileText,
-  ImageIcon,
-  Video,
-  Layers,
+  Edit3,
+  ArrowRight,
+  Camera,
+  BarChart3,
+  Target,
+  TrendingUp,
+  AlertCircle,
+  Sparkles,
+  Archive
 } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/contexts/AuthContext"
 import { useContent } from "@/contexts/ContentContext"
-import { useToast } from "@/components/ToastNotifications"
-import { useEffect } from "react"
-
-// Sample content data for the pipeline
-const sampleContent = {
-  drafts: [
-    {
-      id: "1",
-      title: "5 LinkedIn Growth Strategies That Actually Work",
-      type: "text",
-      framework: "Problem-Solution",
-      author: "You",
-      created: "2 hours ago",
-      modified: "30 min ago",
-      progress: 75,
-      wordCount: 450,
-    },
-    {
-      id: "2",
-      title: "Behind the Scenes: Building a Personal Brand",
-      type: "carousel",
-      framework: "Storytelling",
-      author: "You",
-      created: "1 day ago",
-      modified: "4 hours ago",
-      progress: 40,
-      wordCount: 280,
-    },
-  ],
-  scheduled: [
-    {
-      id: "3",
-      title: "The Future of Remote Work: What Leaders Need to Know",
-      type: "text",
-      framework: "Thought Leadership",
-      author: "You",
-      scheduledDate: "Tomorrow, 9:00 AM",
-      platform: "LinkedIn",
-      autoPost: true,
-    },
-  ],
-  published: [
-    {
-      id: "4",
-      title: "How I Increased My LinkedIn Engagement by 300%",
-      type: "text",
-      framework: "Case Study",
-      author: "You",
-      publishedDate: "2 days ago",
-      views: 2847,
-      likes: 156,
-      comments: 23,
-      shares: 12,
-      performance: "high",
-    },
-    {
-      id: "5",
-      title: "5 Tools Every Content Creator Should Use",
-      type: "carousel",
-      framework: "List",
-      author: "You",
-      publishedDate: "1 week ago",
-      views: 1523,
-      likes: 89,
-      comments: 15,
-      shares: 7,
-      performance: "medium",
-    },
-  ],
-  archived: [
-    {
-      id: "6",
-      title: "My Journey from Corporate to Entrepreneur",
-      type: "text",
-      framework: "Personal Story",
-      author: "You",
-      archivedDate: "2 weeks ago",
-      reason: "Campaign ended",
-      finalViews: 5234,
-      finalEngagement: 312,
-    },
-  ],
-}
-
-const getContentTypeIcon = (type: string) => {
-  switch (type) {
-    case "text":
-      return FileText
-    case "image":
-      return ImageIcon
-    case "carousel":
-      return Layers
-    case "video":
-      return Video
-    default:
-      return FileText
-  }
-}
-
-const getPerformanceBadge = (performance: string) => {
-  switch (performance) {
-    case "high":
-      return <Badge className="bg-green-100 text-green-800">High Performance</Badge>
-    case "medium":
-      return <Badge className="bg-yellow-100 text-yellow-800">Medium Performance</Badge>
-    case "low":
-      return <Badge className="bg-red-100 text-red-800">Low Performance</Badge>
-    default:
-      return null
-  }
-}
+import { useToast } from "@/hooks/use-toast"
 
 export default function ProductionPipelinePage() {
   const { user } = useAuth()
-  const {
-    draftContent: rawDraftContent,
-    scheduledContent: rawScheduledContent,
-    publishedContent: rawPublishedContent,
-    archivedContent: rawArchivedContent,
+  const { 
+    draftContent, 
+    scheduledContent, 
+    publishedContent, 
+    archivedContent,
     loadingContent,
     refreshContent,
     updateContent,
-    publishContent,
-    deleteContent
+    deleteContent,
+    setSelectedContent,
+    setShowScheduleModal,
+    moveToArchive,
+    publishContent
   } = useContent()
+  const { toast } = useToast()
 
-  // Add safe defaults to prevent undefined errors
-  const draftContent = rawDraftContent || []
-  const scheduledContent = rawScheduledContent || []
-  const publishedContent = rawPublishedContent || []
-  const archivedContent = rawArchivedContent || []
-  const { showToast } = useToast()
+  // UI State Management
   const [selectedItems, setSelectedItems] = useState<string[]>([])
-  const [filterType, setFilterType] = useState<string>("all")
+  const [filter, setFilter] = useState<'all' | 'draft' | 'scheduled' | 'published' | 'archived'>('all')
+  const [showPreview, setShowPreview] = useState(false)
+  const [selectedContentItem, setSelectedContentItem] = useState<any>(null)
 
   // Load content on mount
   useEffect(() => {
@@ -180,430 +72,479 @@ export default function ProductionPipelinePage() {
     }
   }, [user, refreshContent])
 
-  const handleSelectItem = (id: string) => {
-    setSelectedItems((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]))
-  }
-
-  const handleSelectAll = (stage: string) => {
-  let stageItems: any[] = []
-  switch(stage) {
-    case 'drafts': stageItems = draftContent; break;
-    case 'scheduled': stageItems = scheduledContent; break;
-    case 'published': stageItems = publishedContent; break;
-    case 'archived': stageItems = archivedContent; break;
-  }
-  const stageIds = stageItems.map((item) => item.id)
-  setSelectedItems((prev) => [...prev, ...stageIds])
-}
-
-  const handleEditContent = (content: any) => {
-    // Navigate to appropriate editor based on source
-    if (content.source_page === 'writer-suite') {
-      window.open(`/writer-suite?contentId=${content.id}`, '_blank')
+  // Content actions (ported from cyberminds)
+  const handleContinueEditing = (content: any) => {
+    const creationMode = content.variations_data?.creation_mode
+    
+    if (creationMode === 'marcus') {
+      // Navigate to Marcus mode
+      window.location.href = '/dashboard?mode=marcus&contentId=' + content.id
+    } else if (creationMode === 'standard') {
+      // Navigate to Standard mode
+      window.location.href = '/dashboard?mode=standard&contentId=' + content.id
     } else {
-      window.open(`/create?editId=${content.id}`, '_blank')
+      // Default navigation
+      window.location.href = '/dashboard?contentId=' + content.id
     }
   }
 
   const handleScheduleContent = (content: any) => {
-    // Open scheduling modal
-    showToast('info', 'Opening schedule modal...')
+    setSelectedContent(content)
+    setShowScheduleModal(true)
   }
 
-  const handlePublishNow = async (contentId: string) => {
-    try {
-      const success = await publishContent(contentId)
-      if (success) {
-        showToast('success', 'Content published successfully!')
-      } else {
-        showToast('error', 'Failed to publish content')
-      }
-    } catch (error) {
-      showToast('error', 'Error publishing content')
-    }
+  const handleImageAction = (content: any) => {
+    localStorage.setItem('selectedContentForImage', JSON.stringify(content))
+    window.location.href = '/images'
   }
 
   const handleDeleteContent = async (contentId: string) => {
-    if (confirm('Are you sure you want to delete this content?')) {
-      try {
-        const success = await deleteContent(contentId)
-        if (success) {
-          showToast('success', 'Content deleted successfully')
-        } else {
-          showToast('error', 'Failed to delete content')
-        }
-      } catch (error) {
-        showToast('error', 'Error deleting content')
-      }
+    const success = await deleteContent(contentId)
+    if (success) {
+      toast({
+        title: "Success",
+        description: "Content deleted successfully",
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to delete content",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handlePublishNow = async (contentId: string) => {
+    const success = await publishContent(contentId)
+    if (success) {
+      toast({
+        title: "Success",
+        description: "Content published successfully!",
+      })
+    } else {
+      toast({
+        title: "Error", 
+        description: "Failed to publish content",
+        variant: "destructive",
+      })
     }
   }
 
   const handleArchiveContent = async (contentId: string) => {
-    try {
-      const success = await updateContent(contentId, { status: 'archived' })
-      if (success) {
-        showToast('success', 'Content archived successfully')
-      } else {
-        showToast('error', 'Failed to archive content')
-      }
-    } catch (error) {
-      showToast('error', 'Error archiving content')
+    const success = await moveToArchive(contentId)
+    if (success) {
+      toast({
+        title: "Success",
+        description: "Content archived successfully",
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to archive content", 
+        variant: "destructive",
+      })
     }
   }
-  // Add this loading check right before the existing return statement
-  if (loadingContent && (!draftContent || draftContent.length === 0)) {
-    return (
-      <div className="flex h-screen bg-background">
-        <SidebarNavigation />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading your content...</p>
-          </div>
-        </div>
-      </div>
-    )
+
+  // Utility functions (from cyberminds)
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'draft': return 'bg-gray-100 text-gray-800 border-gray-200'
+      case 'scheduled': return 'bg-blue-100 text-blue-800 border-blue-200' 
+      case 'published': return 'bg-green-100 text-green-800 border-green-200'
+      case 'archived': return 'bg-orange-100 text-orange-800 border-orange-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
   }
-  return (
-    <div className="flex h-screen bg-background">
-      <SidebarNavigation />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="flex h-14 items-center justify-between px-4">
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink href="/" className="flex items-center gap-2">
-                    <Home className="h-4 w-4" />
-                    Dashboard
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Production Pipeline</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-        </div>
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'draft': return <Edit3 className="w-4 h-4" />
+      case 'scheduled': return <Clock className="w-4 h-4" />
+      case 'published': return <CheckCircle className="w-4 h-4" />
+      case 'archived': return <Archive className="w-4 h-4" />
+      default: return <Edit3 className="w-4 h-4" />
+    }
+  }
 
-        {/* Main Content */}
-        <div className="flex-1 overflow-auto p-4">
-          {/* Hero Section */}
-          <div className="mb-6">
-            <TypingAnimation
-              text="Production Pipeline"
-              className="text-3xl font-medium tracking-tight text-balance font-sans text-emerald-800 mb-2"
+  const getContentTypeIcon = (type: string) => {
+    switch (type) {
+      case 'framework': return <BarChart3 className="w-4 h-4" />
+      case 'story': return <Target className="w-4 h-4" />
+      case 'trend': return <TrendingUp className="w-4 h-4" />
+      case 'mistake': return <AlertCircle className="w-4 h-4" />
+      case 'metrics': return <Sparkles className="w-4 h-4" />
+      default: return <BarChart3 className="w-4 h-4" />
+    }
+  }
+
+  const getContinueButtonText = (content: any): string => {
+    const creationMode = content.variations_data?.creation_mode
+    switch (creationMode) {
+      case 'marcus': return 'Continue in Marcus'
+      case 'standard': return 'Continue in Standard'
+      default: return 'Continue Editing'
+    }
+  }
+
+  const getSmartDateDisplay = (item: any): string => {
+    const formatDateSafely = (dateString: string) => {
+      const [year, month, day] = dateString.split('-')
+      return `${month}/${day}/${year}`
+    }
+
+    switch (item.status) {
+      case 'draft':
+        return `Created: ${new Date(item.created_at).toLocaleDateString()}`
+      case 'scheduled':
+        return `Scheduled: ${item.scheduled_date ? formatDateSafely(item.scheduled_date) : new Date(item.created_at).toLocaleDateString()}`
+      case 'published':
+        return `Published: ${item.published_at ? new Date(item.published_at).toLocaleDateString() : new Date(item.created_at).toLocaleDateString()}`
+      case 'archived':
+        if (item.published_at) {
+          return `Published: ${new Date(item.published_at).toLocaleDateString()}`
+        } else if (item.scheduled_date) {
+          return `Scheduled: ${formatDateSafely(item.scheduled_date)}`
+        } else {
+          return `Created: ${new Date(item.created_at).toLocaleDateString()}`
+        }
+      default:
+        return `Created: ${new Date(item.created_at).toLocaleDateString()}`
+    }
+  }
+
+  // Content Card Component
+  const ContentCard = ({ content, columnType }: { content: any, columnType: string }) => {
+    const IconComponent = getContentTypeIcon(content.content_type || content.type)
+    
+    return (
+      <Card className="group hover:shadow-md transition-all duration-200 cursor-pointer relative">
+        <CardContent className="p-4">
+          {/* Header */}
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <IconComponent />
+              <Badge variant="outline" className={getStatusColor(content.status)}>
+                {getStatusIcon(content.status)}
+                <span className="ml-1 capitalize">{content.status || 'draft'}</span>
+              </Badge>
+            </div>
+            <Checkbox 
+              checked={selectedItems.includes(content.id)}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setSelectedItems([...selectedItems, content.id])
+                } else {
+                  setSelectedItems(selectedItems.filter(id => id !== content.id))
+                }
+              }}
             />
-            <p className="text-gray-600 text-pretty">Manage your content workflow from draft to published</p>
           </div>
 
-          {/* Action Bar */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <InteractiveHoverButton
-                text="Create New Content"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              />
+          {/* Title */}
+          <h4 className="font-medium text-gray-900 mb-2 line-clamp-2">
+            {content.title || content.prompt_input || 'Untitled Content'}
+          </h4>
+
+          {/* Content Preview */}
+          <p className="text-sm text-gray-600 mb-3 line-clamp-3">
+            {content.content_text.length > 150 
+              ? content.content_text.substring(0, 150) + '...'
+              : content.content_text
+            }
+          </p>
+
+          {/* Metadata */}
+          <div className="space-y-1 mb-4 text-xs text-gray-500">
+            <div className="flex justify-between">
+              <span>Tone: {content.tone_used}</span>
+              <span>{content.content_text.length} chars</span>
+            </div>
+            <div>{getSmartDateDisplay(content)}</div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-between pt-3 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex space-x-2">
+              <Button 
+                size="sm" 
+                variant="default"
+                onClick={() => {
+                  setSelectedContentItem(content)
+                  setShowPreview(true)
+                }}
+              >
+                <Eye className="w-3 h-3 mr-1" />
+                Preview
+              </Button>
+              
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => handleContinueEditing(content)}
+              >
+                <ArrowRight className="w-3 h-3 mr-1" />
+                {getContinueButtonText(content)}
+              </Button>
+            </div>
+
+            <div className="flex space-x-1">
+              {/* Dynamic action buttons based on status */}
+              {columnType === 'draft' && (
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => handleScheduleContent(content)}
+                >
+                  <Calendar className="w-3 h-3" />
+                </Button>
+              )}
+              
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => handleImageAction(content)}
+              >
+                <Camera className="w-3 h-3" />
+              </Button>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    Bulk Actions
-                    <MoreVertical className="ml-2 h-4 w-4" />
+                  <Button size="sm" variant="outline">
+                    <MoreVertical className="w-3 h-3" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem>Move to Scheduled</DropdownMenuItem>
-                  <DropdownMenuItem>Archive Selected</DropdownMenuItem>
-                  <DropdownMenuItem>Delete Selected</DropdownMenuItem>
+                  {columnType === 'scheduled' && (
+                    <DropdownMenuItem onClick={() => handlePublishNow(content.id)}>
+                      <CheckCircle className="w-3 h-3 mr-2" />
+                      Publish Now
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => handleArchiveContent(content.id)}>
+                    <Archive className="w-3 h-3 mr-2" />
+                    Archive
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => handleDeleteContent(content.id)}
+                    className="text-red-600"
+                  >
+                    <Trash2 className="w-3 h-3 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-
-            <div className="flex items-center gap-3">
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Filter by type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="text">Text Posts</SelectItem>
-                  <SelectItem value="carousel">Carousels</SelectItem>
-                  <SelectItem value="video">Videos</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="sm">
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
           </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
-          {/* Status Counter Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card className="cursor-pointer hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Drafts</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{draftContent.length}</div>
-                <p className="text-xs text-gray-500 mt-1">{draftContent.filter(c => !c.title).length} need attention</p>
-              </CardContent>
-            </Card>
+  if (loadingContent) {
+    return (
+      <ContentLayout title="Production Pipeline">
+        <div className="flex items-center justify-center h-64">
+          <RefreshCw className="w-6 h-6 animate-spin" />
+          <span className="ml-2">Loading content...</span>
+        </div>
+      </ContentLayout>
+    )
+  }
 
-            <Card className="cursor-pointer hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Scheduled</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600">{scheduledContent.length}</div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {scheduledContent.length > 0 ? `Next: ${new Date(scheduledContent[0]?.scheduled_date || '').toLocaleDateString()}` : 'None scheduled'}
-                </p>
-              </CardContent>
-            </Card>
+  return (
+    <ContentLayout title="Production Pipeline">
+      {/* Header Actions */}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-2xl font-bold">Production Pipeline</h2>
+          <p className="text-muted-foreground">
+            Manage your content workflow from draft to published
+          </p>
+        </div>
+        
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={refreshContent}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+          
+          {selectedItems.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  Bulk Actions ({selectedItems.length})
+                  <MoreVertical className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem>Move to Scheduled</DropdownMenuItem>
+                <DropdownMenuItem>Archive Selected</DropdownMenuItem>
+                <DropdownMenuItem className="text-red-600">Delete Selected</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      </div>
 
-            <Card className="cursor-pointer hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Published</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{publishedContent.length}</div>
-                <p className="text-xs text-gray-500 mt-1">This month</p>
-              </CardContent>
-            </Card>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Drafts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{draftContent.length}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Scheduled</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{scheduledContent.length}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Published</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{publishedContent.length}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Archived</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{archivedContent.length}</div>
+          </CardContent>
+        </Card>
+      </div>
 
-            <Card className="cursor-pointer hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Archived</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gray-600">{archivedContent.length}</div>
-                <p className="text-xs text-gray-500 mt-1">Total archived</p>
-              </CardContent>
-            </Card>
+      {/* Kanban Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Drafts Column */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-blue-600">Drafts ({draftContent.length})</h3>
           </div>
+          
+          <div className="space-y-3 min-h-[200px]">
+            {draftContent.map((content) => (
+              <ContentCard key={content.id} content={content} columnType="draft" />
+            ))}
+            
+            {draftContent.length === 0 && (
+              <Card className="border-dashed">
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  No drafts yet. Create your first post!
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
 
+        {/* Scheduled Column */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-yellow-600">Scheduled ({scheduledContent.length})</h3>
+          </div>
+          
+          <div className="space-y-3 min-h-[200px]">
+            {scheduledContent.map((content) => (
+              <ContentCard key={content.id} content={content} columnType="scheduled" />
+            ))}
+            
+            {scheduledContent.length === 0 && (
+              <Card className="border-dashed">
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  No scheduled content. Schedule from drafts!
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
 
-          {/* Kanban Pipeline */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            {/* Drafts Column */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-blue-600">Drafts ({draftContent.length})</h3>
-                <Button variant="ghost" size="sm" onClick={() => handleSelectAll("drafts")}>
-                  Select All
-                </Button>
-              </div>
+        {/* Published Column */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-green-600">Published ({publishedContent.length})</h3>
+          </div>
+          
+          <div className="space-y-3 min-h-[200px]">
+            {publishedContent.map((content) => (
+              <ContentCard key={content.id} content={content} columnType="published" />
+            ))}
+            
+            {publishedContent.length === 0 && (
+              <Card className="border-dashed">
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  No published content yet.
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
 
-              <div className="space-y-3">
-                {draftContent.map((item) => {
-                  const IconComponent = getContentTypeIcon(item.type)
-                  return (
-                    <Card key={item.id} className="p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-start gap-3">
-                        <Checkbox
-                          checked={selectedItems.includes(item.id)}
-                          onCheckedChange={() => handleSelectItem(item.id)}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <IconComponent className="h-4 w-4 text-gray-500" />
-                            <Badge variant="outline" className="text-xs">
-                              {item.content_type}
-                            </Badge>
-                          </div>
-                          <h4 className="font-medium text-sm mb-2 line-clamp-2">{item.title}</h4>
-                          <div className="space-y-2">
-                            <Progress value={item.progress} className="h-2" />
-                            <div className="flex justify-between text-xs text-gray-500">
-                              <span>{item.word_count || 0} words</span>
-                              <span>{new Date(item.updated_at || item.created_at).toLocaleDateString()}</span>
-                            </div>
-                          </div>
-                          <div className="flex gap-1 mt-3">
-                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
-                              <Edit className="h-3 w-3 mr-1" />
-                              Continue
-                            </Button>
-                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
-                              <Calendar className="h-3 w-3 mr-1" />
-                              Schedule
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Scheduled Column */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-orange-600">Scheduled ({scheduledContent.length})</h3>
-                <Button variant="ghost" size="sm" onClick={() => handleSelectAll("scheduled")}>
-                  Select All
-                </Button>
-              </div>
-
-              <div className="space-y-3">
-                {scheduledContent.map((item) => {
-                  const IconComponent = getContentTypeIcon(item.type)
-                  return (
-                    <Card key={item.id} className="p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-start gap-3">
-                        <Checkbox
-                          checked={selectedItems.includes(item.id)}
-                          onCheckedChange={() => handleSelectItem(item.id)}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <IconComponent className="h-4 w-4 text-gray-500" />
-                            <Badge variant="outline" className="text-xs">
-                              {item.content_type}
-                            </Badge>
-                          </div>
-                          <h4 className="font-medium text-sm mb-2 line-clamp-2">{item.title}</h4>
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-xs text-gray-600">
-                              <Clock className="h-3 w-3" />
-                              {item.scheduled_date ? new Date(item.scheduled_date).toLocaleDateString() : 'Not scheduled'}
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-gray-600">
-                              <CheckCircle className="h-3 w-3 text-green-500" />
-                              Auto-posting enabled
-                            </div>
-                          </div>
-                          <div className="flex gap-1 mt-3">
-                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
-                              <Edit className="h-3 w-3 mr-1" />
-                              Edit
-                            </Button>
-                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
-                              <Eye className="h-3 w-3 mr-1" />
-                              Preview
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Published Column */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-green-600">Published ({publishedContent.length})</h3>
-                <Button variant="ghost" size="sm" onClick={() => handleSelectAll("published")}>
-                  Select All
-                </Button>
-              </div>
-
-              <div className="space-y-3">
-                {scheduledContent.map((item) => {
-                  const IconComponent = getContentTypeIcon(item.type)
-                  return (
-                    <Card key={item.id} className="p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-start gap-3">
-                        <Checkbox
-                          checked={selectedItems.includes(item.id)}
-                          onCheckedChange={() => handleSelectItem(item.id)}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <IconComponent className="h-4 w-4 text-gray-500" />
-                            <Badge variant="outline" className="text-xs">
-                              {item.content_type}
-                            </Badge>
-                          </div>
-                          <h4 className="font-medium text-sm mb-2 line-clamp-2">{item.title}</h4>
-                          <div className="space-y-2">
-                            <Badge className="bg-green-100 text-green-800">Published</Badge>
-                            <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-                              <div>{item.word_count || 0} words</div>
-                              <div>Published</div>
-                            </div>
-                            <p className="text-xs text-gray-500">{new Date(item.published_at || item.created_at).toLocaleDateString()}</p>
-                          </div>
-                          <div className="flex gap-1 mt-3">
-                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
-                              <BarChart3 className="h-3 w-3 mr-1" />
-                              Analytics
-                            </Button>
-                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
-                              <Copy className="h-3 w-3 mr-1" />
-                              Repurpose
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Archived Column */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-600">Archived ({archivedContent.length})</h3>
-                <Button variant="ghost" size="sm" onClick={() => handleSelectAll("archived")}>
-                  Select All
-                </Button>
-              </div>
-
-              <div className="space-y-3">
-                {archivedContent.map((item) => {
-                  const IconComponent = getContentTypeIcon(item.type)
-                  return (
-                    <Card key={item.id} className="p-4 hover:shadow-md transition-shadow opacity-75">
-                      <div className="flex items-start gap-3">
-                        <Checkbox
-                          checked={selectedItems.includes(item.id)}
-                          onCheckedChange={() => handleSelectItem(item.id)}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <IconComponent className="h-4 w-4 text-gray-500" />
-                            <Badge variant="outline" className="text-xs">
-                              {item.content_type}
-                            </Badge>
-                          </div>
-                          <h4 className="font-medium text-sm mb-2 line-clamp-2">{item.title}</h4>
-                          <div className="space-y-2">
-                            <div className="text-xs text-gray-600">
-                              <div>Archived: {new Date(item.updated_at || item.created_at).toLocaleDateString()}</div>
-                              <div>{item.word_count || 0} words</div>
-                            </div>
-                            <p className="text-xs text-gray-500">
-                              Archived {new Date(item.updated_at || item.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div className="flex gap-1 mt-3">
-                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
-                              <Copy className="h-3 w-3 mr-1" />
-                              Duplicate
-                            </Button>
-                            <Button size="sm" variant="outline" className="text-xs bg-transparent">
-                              <Trash2 className="h-3 w-3 mr-1" />
-                              Delete
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  )
-                })}
-              </div>
-            </div>
+        {/* Archived Column */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-orange-600">Archived ({archivedContent.length})</h3>
+          </div>
+          
+          <div className="space-y-3 min-h-[200px]">
+            {archivedContent.map((content) => (
+              <ContentCard key={content.id} content={content} columnType="archived" />
+            ))}
+            
+            {archivedContent.length === 0 && (
+              <Card className="border-dashed">
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  No archived content.
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Preview Modal */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Content Preview</DialogTitle>
+          </DialogHeader>
+          
+          {selectedContentItem && (
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                {getContentTypeIcon(selectedContentItem.content_type)}
+                <Badge className={getStatusColor(selectedContentItem.status)}>
+                  {selectedContentItem.status || 'draft'}
+                </Badge>
+              </div>
+              
+              <h3 className="font-semibold">
+                {selectedContentItem.title || selectedContentItem.prompt_input || 'Untitled Content'}
+              </h3>
+              
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="whitespace-pre-wrap">{selectedContentItem.content_text}</p>
+              </div>
+              
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Tone: {selectedContentItem.tone_used}</span>
+                <span>{getSmartDateDisplay(selectedContentItem)}</span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </ContentLayout>
   )
 }
