@@ -54,19 +54,7 @@ import {
 import Link from "next/link"
 import { GridBeams } from "@/components/magicui/grid-beams"
 
-// Types matching cyberminds structure
-interface ScheduledContentWithCalendar {
-  id: string
-  title?: string
-  prompt_input?: string
-  content_text?: string
-  status: 'scheduled' | 'published' | 'archived'
-  scheduled_date: string
-  scheduled_time?: string
-  published_at?: string
-  created_at: string
-}
-
+// Types and constants
 const FULL_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = [
@@ -92,10 +80,10 @@ export default function CalendarPage() {
   } = useContent()
   const { toast } = useToast()
 
-  // State management
+  // State
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [calendarDate, setCalendarDate] = useState<Date>(new Date()) // For mini calendar navigation
-  const [selectedContentItem, setSelectedContentItem] = useState<ScheduledContentWithCalendar | null>(null)
+  const [calendarDate, setCalendarDate] = useState<Date>(new Date())
+  const [selectedContentItem, setSelectedContentItem] = useState<any>(null)
   const [showRescheduleModal, setShowRescheduleModal] = useState(false)
   const [rescheduleDate, setRescheduleDate] = useState('')
   const [rescheduleTime, setRescheduleTime] = useState('09:00')
@@ -132,18 +120,15 @@ export default function CalendarPage() {
     const days: Date[] = []
     const firstDayOfWeek = firstDay.getDay()
     
-    // Add previous month days
     for (let i = firstDayOfWeek - 1; i >= 0; i--) {
       const prevDate = new Date(year, month, -i)
       days.push(prevDate)
     }
     
-    // Add current month days
     for (let day = 1; day <= daysInMonth; day++) {
       days.push(new Date(year, month, day))
     }
     
-    // Add next month days to complete grid
     const remainingDays = 42 - days.length
     for (let day = 1; day <= remainingDays; day++) {
       days.push(new Date(year, month + 1, day))
@@ -169,7 +154,7 @@ export default function CalendarPage() {
     return date.toISOString().split('T')[0]
   }
 
-  // Navigation functions
+  // Navigation
   const navigateCalendarMonth = (direction: 'prev' | 'next') => {
     const newDate = new Date(calendarDate)
     newDate.setMonth(calendarDate.getMonth() + (direction === 'next' ? 1 : -1))
@@ -188,7 +173,7 @@ export default function CalendarPage() {
     setCalendarDate(today)
   }
 
-  // Content management functions
+  // Content actions
   const handleReschedule = (content: any) => {
     setSelectedContentItem(content)
     setRescheduleDate(content.scheduled_date || formatDateForScheduling(new Date()))
@@ -216,7 +201,7 @@ export default function CalendarPage() {
     }
   }
 
-  // UI helper functions
+  // UI helpers
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'scheduled': return 'bg-blue-50 text-blue-700 border-blue-200'
@@ -233,214 +218,6 @@ export default function CalendarPage() {
     }
   }
 
-  // Content Card Component
-  const ContentCard = ({ content }: { content: any }) => (
-    <Card className="group hover:shadow-md transition-all duration-200 cursor-pointer border-gray-200 bg-white/90 backdrop-blur-sm mb-2">
-      <CardContent className="p-3">
-        <div className="flex items-start justify-between mb-2">
-          <Badge variant="outline" className={`${getStatusColor(content.status)} text-xs`}>
-            {getStatusIcon(content.status)}
-            <span className="ml-1">{content.scheduled_time || '09:00'}</span>
-          </Badge>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100">
-                <MoreVertical className="w-3 h-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleReschedule(content)}>
-                <CalendarIcon className="w-3 h-3 mr-2" />
-                Reschedule
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Eye className="w-3 h-3 mr-2" />
-                Preview
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        
-        <h4 className="font-medium text-gray-900 line-clamp-2 leading-tight text-sm mb-1">
-          {content.title || content.prompt_input || 'Untitled Content'}
-        </h4>
-        
-        <p className="text-xs text-gray-600 line-clamp-2">
-          {content.content_text?.length > 60
-            ? content.content_text.substring(0, 60) + '...'
-            : content.content_text || 'No content'}
-        </p>
-      </CardContent>
-    </Card>
-  )
-
-  // Mini Calendar Component (Left Panel)
-  const MiniCalendar = () => {
-    const monthDays = getDaysInMonth(calendarDate)
-    
-    return (
-      <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-medium text-emerald-800">
-              {MONTHS[calendarDate.getMonth()]} {calendarDate.getFullYear()}
-            </CardTitle>
-            <div className="flex space-x-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigateCalendarMonth('prev')}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigateCalendarMonth('next')}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-3">
-          {/* Day headers */}
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {SHORT_DAYS.map(day => (
-              <div key={day} className="text-center text-xs font-medium text-gray-500 p-1">
-                {day}
-              </div>
-            ))}
-          </div>
-          
-          {/* Calendar grid */}
-          <div className="grid grid-cols-7 gap-1">
-            {monthDays.map((date, index) => {
-              const hasContent = getContentForDate(date).length > 0
-              const isSelected = isSameDay(date, selectedDate)
-              const isTodayDate = isToday(date)
-              const isCurrentMonthDay = isCurrentMonth(date)
-              
-              return (
-                <Button
-                  key={index}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedDate(date)}
-                  className={`
-                    h-8 w-8 p-0 text-xs transition-all duration-200
-                    ${isSelected ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : ''}
-                    ${isTodayDate && !isSelected ? 'bg-blue-50 text-blue-700 font-medium' : ''}
-                    ${!isCurrentMonthDay ? 'text-gray-400' : 'text-gray-700'}
-                    ${hasContent && !isSelected ? 'bg-gray-100' : ''}
-                    hover:bg-emerald-50
-                  `}
-                >
-                  {date.getDate()}
-                  {hasContent && (
-                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-emerald-500 rounded-full"></div>
-                  )}
-                </Button>
-              )
-            })}
-          </div>
-          
-          <div className="mt-4 pt-3 border-t border-gray-200">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goToToday}
-              className="w-full"
-            >
-              Today
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  // Weekly View Component (Right Panel)
-  const WeeklyView = () => {
-    const weekDays = getWeekDays(selectedDate)
-    
-    return (
-      <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-medium text-emerald-800">
-              Week of {weekDays[0].toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-            </CardTitle>
-            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigateWeek('prev')}
-              >
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigateWeek('next')}
-              >
-                Next
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-4">
-          <div className="space-y-6">
-            {weekDays.map(day => {
-              const dayContent = getContentForDate(day)
-              const isTodayDate = isToday(day)
-              const isSelectedDay = isSameDay(day, selectedDate)
-              
-              return (
-                <div 
-                  key={day.toISOString()} 
-                  className={`border-l-4 pl-4 transition-all duration-200 ${
-                    isTodayDate ? 'border-emerald-500 bg-emerald-50/30' :
-                    isSelectedDay ? 'border-emerald-300 bg-emerald-50/20' :
-                    'border-gray-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className={`font-medium transition-colors ${
-                      isTodayDate ? 'text-emerald-900' : 
-                      isSelectedDay ? 'text-emerald-800' :
-                      'text-gray-900'
-                    }`}>
-                      {FULL_DAYS[day.getDay()]} {day.getDate()}
-                    </h3>
-                    <Badge variant="outline" className="text-xs">
-                      {dayContent.length} {dayContent.length === 1 ? 'item' : 'items'}
-                    </Badge>
-                  </div>
-                  
-                  {dayContent.length > 0 ? (
-                    <div className="space-y-2">
-                      {dayContent.map(content => (
-                        <ContentCard key={content.id} content={content} />
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500 italic py-2">No content scheduled</p>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
   // Loading state
   const hasNoContent = scheduledContent.length === 0 && publishedContent.length === 0 && archivedContent.length === 0
 
@@ -454,8 +231,7 @@ export default function CalendarPage() {
               <RefreshCw className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-4" />
               <p className="text-gray-600">Loading your calendar...</p>
             </div>
-                      </div>
-          </GridBeams>
+          </div>
         </div>
       </div>
     )
@@ -475,101 +251,287 @@ export default function CalendarPage() {
             gridSize={50}
           >
             <div className="p-6 space-y-6">
-            {/* Breadcrumb */}
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink asChild>
-                    <Link href="/" className="flex items-center gap-2">
-                      <Home className="h-4 w-4" />
-                      Dashboard
-                    </Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Calendar</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+              {/* Breadcrumb */}
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild>
+                      <Link href="/" className="flex items-center gap-2">
+                        <Home className="h-4 w-4" />
+                        Dashboard
+                      </Link>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>Calendar</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
 
-            {/* Header */}
-            <div className="flex justify-between items-start">
-              <div>
-                <h1 className="text-3xl font-medium tracking-tight text-emerald-800 mb-2">
-                  Content Calendar
-                </h1>
-                <p className="text-gray-600 text-pretty">
-                  View and manage your scheduled content
-                </p>
+              {/* Header */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <h1 className="text-3xl font-medium tracking-tight text-emerald-800 mb-2">
+                    Content Calendar
+                  </h1>
+                  <p className="text-gray-600 text-pretty">
+                    View and manage your scheduled content
+                  </p>
+                </div>
+                
+                <Button 
+                  variant="outline" 
+                  onClick={refreshContent}
+                  className="flex items-center space-x-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Refresh</span>
+                </Button>
               </div>
-              
-              <Button 
-                variant="outline" 
-                onClick={refreshContent}
-                className="flex items-center space-x-2"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span>Refresh</span>
-              </Button>
-            </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-3 gap-4">
-              <Card className="bg-white/80 backdrop-blur-sm">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Scheduled</p>
-                      <p className="text-2xl font-bold text-blue-600">{scheduledContent.length}</p>
+              {/* Stats Cards */}
+              <div className="grid grid-cols-3 gap-4">
+                <Card className="bg-white/80 backdrop-blur-sm">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Scheduled</p>
+                        <p className="text-2xl font-bold text-blue-600">{scheduledContent.length}</p>
+                      </div>
+                      <Clock className="w-8 h-8 text-blue-600" />
                     </div>
-                    <Clock className="w-8 h-8 text-blue-600" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-white/80 backdrop-blur-sm">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Published</p>
-                      <p className="text-2xl font-bold text-green-600">{publishedContent.length}</p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="bg-white/80 backdrop-blur-sm">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Published</p>
+                        <p className="text-2xl font-bold text-green-600">{publishedContent.length}</p>
+                      </div>
+                      <CheckCircle className="w-8 h-8 text-green-600" />
                     </div>
-                    <CheckCircle className="w-8 h-8 text-green-600" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-white/80 backdrop-blur-sm">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">This Week</p>
-                      <p className="text-2xl font-bold text-emerald-600">
-                        {getWeekDays(selectedDate).reduce((count, day) => 
-                          count + getContentForDate(day).length, 0
-                        )}
-                      </p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="bg-white/80 backdrop-blur-sm">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">This Week</p>
+                        <p className="text-2xl font-bold text-emerald-600">
+                          {getWeekDays(selectedDate).reduce((count, day) => 
+                            count + getContentForDate(day).length, 0
+                          )}
+                        </p>
+                      </div>
+                      <CalendarIcon className="w-8 h-8 text-emerald-600" />
                     </div>
-                    <CalendarIcon className="w-8 h-8 text-emerald-600" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-            {/* Two-Column Layout: Mini Calendar + Weekly View */}
-            <div className="grid grid-cols-12 gap-6">
-              {/* Left Column - Mini Calendar */}
-              <div className="col-span-4">
-                <MiniCalendar />
-              </div>
-              
-              {/* Right Column - Weekly View */}
-              <div className="col-span-8">
-                <WeeklyView />
+              {/* Two-Column Layout */}
+              <div className="grid grid-cols-12 gap-6">
+                {/* Left Column - Mini Calendar */}
+                <div className="col-span-4">
+                  <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg font-medium text-emerald-800">
+                          {MONTHS[calendarDate.getMonth()]} {calendarDate.getFullYear()}
+                        </CardTitle>
+                        <div className="flex space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigateCalendarMonth('prev')}
+                            className="h-8 w-8 p-0"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigateCalendarMonth('next')}
+                            className="h-8 w-8 p-0"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-3">
+                      {/* Day headers */}
+                      <div className="grid grid-cols-7 gap-1 mb-2">
+                        {SHORT_DAYS.map(day => (
+                          <div key={day} className="text-center text-xs font-medium text-gray-500 p-1">
+                            {day}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Calendar grid */}
+                      <div className="grid grid-cols-7 gap-1">
+                        {getDaysInMonth(calendarDate).map((date, index) => {
+                          const hasContent = getContentForDate(date).length > 0
+                          const isSelected = isSameDay(date, selectedDate)
+                          const isTodayDate = isToday(date)
+                          const isCurrentMonthDay = isCurrentMonth(date)
+                          
+                          return (
+                            <Button
+                              key={index}
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedDate(date)}
+                              className={`
+                                h-8 w-8 p-0 text-xs transition-all duration-200 relative
+                                ${isSelected ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : ''}
+                                ${isTodayDate && !isSelected ? 'bg-blue-50 text-blue-700 font-medium' : ''}
+                                ${!isCurrentMonthDay ? 'text-gray-400' : 'text-gray-700'}
+                                ${hasContent && !isSelected ? 'bg-gray-100' : ''}
+                                hover:bg-emerald-50
+                              `}
+                            >
+                              {date.getDate()}
+                              {hasContent && (
+                                <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-emerald-500 rounded-full"></div>
+                              )}
+                            </Button>
+                          )
+                        })}
+                      </div>
+                      
+                      <div className="mt-4 pt-3 border-t border-gray-200">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={goToToday}
+                          className="w-full"
+                        >
+                          Today
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                {/* Right Column - Weekly View */}
+                <div className="col-span-8">
+                  <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg font-medium text-emerald-800">
+                          Week of {getWeekDays(selectedDate)[0].toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                        </CardTitle>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigateWeek('prev')}
+                          >
+                            <ArrowLeft className="w-4 h-4 mr-1" />
+                            Previous
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigateWeek('next')}
+                          >
+                            Next
+                            <ArrowRight className="w-4 h-4 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                      <div className="space-y-6">
+                        {getWeekDays(selectedDate).map(day => {
+                          const dayContent = getContentForDate(day)
+                          const isTodayDate = isToday(day)
+                          const isSelectedDay = isSameDay(day, selectedDate)
+                          
+                          return (
+                            <div 
+                              key={day.toISOString()} 
+                              className={`border-l-4 pl-4 transition-all duration-200 ${
+                                isTodayDate ? 'border-emerald-500 bg-emerald-50/30' :
+                                isSelectedDay ? 'border-emerald-300 bg-emerald-50/20' :
+                                'border-gray-200'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-3">
+                                <h3 className={`font-medium transition-colors ${
+                                  isTodayDate ? 'text-emerald-900' : 
+                                  isSelectedDay ? 'text-emerald-800' :
+                                  'text-gray-900'
+                                }`}>
+                                  {FULL_DAYS[day.getDay()]} {day.getDate()}
+                                </h3>
+                                <Badge variant="outline" className="text-xs">
+                                  {dayContent.length} {dayContent.length === 1 ? 'item' : 'items'}
+                                </Badge>
+                              </div>
+                              
+                              {dayContent.length > 0 ? (
+                                <div className="space-y-2">
+                                  {dayContent.map(content => (
+                                    <Card key={content.id} className="group hover:shadow-md transition-all duration-200 cursor-pointer border-gray-200 bg-white/90 backdrop-blur-sm">
+                                      <CardContent className="p-3">
+                                        <div className="flex items-start justify-between mb-2">
+                                          <Badge variant="outline" className={`${getStatusColor(content.status)} text-xs`}>
+                                            {getStatusIcon(content.status)}
+                                            <span className="ml-1">{content.scheduled_time || '09:00'}</span>
+                                          </Badge>
+                                          
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100">
+                                                <MoreVertical className="w-3 h-3" />
+                                              </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                              <DropdownMenuItem onClick={() => handleReschedule(content)}>
+                                                <CalendarIcon className="w-3 h-3 mr-2" />
+                                                Reschedule
+                                              </DropdownMenuItem>
+                                              <DropdownMenuItem>
+                                                <Eye className="w-3 h-3 mr-2" />
+                                                Preview
+                                              </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
+                                        </div>
+                                        
+                                        <h4 className="font-medium text-gray-900 line-clamp-2 leading-tight text-sm mb-1">
+                                          {content.title || content.prompt_input || 'Untitled Content'}
+                                        </h4>
+                                        
+                                        <p className="text-xs text-gray-600 line-clamp-2">
+                                          {content.content_text?.length > 60
+                                            ? content.content_text.substring(0, 60) + '...'
+                                            : content.content_text || 'No content'}
+                                        </p>
+                                      </CardContent>
+                                    </Card>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-gray-500 italic py-2">No content scheduled</p>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             </div>
-          </div>
+          </GridBeams>
         </div>
       </div>
 
