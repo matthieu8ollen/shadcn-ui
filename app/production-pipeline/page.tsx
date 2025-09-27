@@ -342,21 +342,24 @@ export default function ProductionPipelinePage() {
     </div>
   )
 
-  if (loadingContent) {
-    return (
-      <div className="flex h-screen bg-white">
-        <SidebarNavigation />
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <RefreshCw className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-4" />
-              <p className="text-gray-600">Loading your content...</p>
-            </div>
+  // Only show loading if there's no content AND we're loading
+const hasNoContent = draftContent.length === 0 && scheduledContent.length === 0 && publishedContent.length === 0 && archivedContent.length === 0
+
+if (loadingContent && hasNoContent) {
+  return (
+    <div className="flex h-screen bg-white">
+      <SidebarNavigation />
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <RefreshCw className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-4" />
+            <p className="text-gray-600">Loading your content...</p>
           </div>
         </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
 
   return (
     <div className="flex h-screen bg-white">
