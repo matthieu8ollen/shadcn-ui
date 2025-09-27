@@ -31,6 +31,7 @@ import {
   Sparkles,
   Camera,
   MoreVertical,
+  Trash2,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -55,74 +56,63 @@ export default function ProductionPipelinePage() {
     scheduleContentItem,
     publishContent,
     moveToArchive,
+    deleteContent,
     setSelectedContent,
     setShowScheduleModal,
   } = useContent()
   const { toast } = useToast()
-  const [selectedItems, setSelectedItems] = useState<string[]>([])
-const [activeFilter, setActiveFilter] = useState<'draft' | 'scheduled' | 'published' | 'archived'>('draft')
-
-const getCurrentContent = () => {
-  switch (activeFilter) {
-    case 'draft': return draftContent
-    case 'scheduled': return scheduledContent
-    case 'published': return publishedContent
-    case 'archived': return archivedContent
-    default: return draftContent
-  }
-}
-
-const getEmptyStateMessage = () => {
-  switch (activeFilter) {
-    case 'draft': return 'Create your first post to get started!'
-    case 'scheduled': return 'Schedule content from your drafts.'
-    case 'published': return 'Published content will appear here.'
-    case 'archived': return 'Archived content will appear here.'
-    default: return ''
-  }
-}
   
+  // State for sectioned layout
+  const [activeFilter, setActiveFilter] = useState<'draft' | 'scheduled' | 'published' | 'archived'>('draft')
+
+  // Get current content based on filter
+  const getCurrentContent = () => {
+    switch (activeFilter) {
+      case 'draft': return draftContent
+      case 'scheduled': return scheduledContent
+      case 'published': return publishedContent
+      case 'archived': return archivedContent
+      default: return draftContent
+    }
+  }
+
+  const getEmptyStateMessage = () => {
+    switch (activeFilter) {
+      case 'draft': return 'Create your first post to get started!'
+      case 'scheduled': return 'Schedule content from your drafts.'
+      case 'published': return 'Published content will appear here.'
+      case 'archived': return 'Archived content will appear here.'
+      default: return ''
+    }
+  }
+
   useEffect(() => {
     if (user) {
       refreshContent()
     }
   }, [user, refreshContent])
 
-  // Utility functions
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'draft': return 'bg-blue-50 text-blue-700 border-blue-200'
-      case 'scheduled': return 'bg-yellow-50 text-yellow-700 border-yellow-200'
-      case 'published': return 'bg-green-50 text-green-700 border-green-200'
-      case 'archived': return 'bg-gray-50 text-gray-700 border-gray-200'
-      default: return 'bg-blue-50 text-blue-700 border-blue-200'
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'draft': return <Edit3 className="w-3 h-3" />
-      case 'scheduled': return <Clock className="w-3 h-3" />
-      case 'published': return <CheckCircle className="w-3 h-3" />
-      case 'archived': return <Archive className="w-3 h-3" />
-      default: return <Edit3 className="w-3 h-3" />
-    }
-  }
-
-  const getContentTypeIcon = (type: string) => {
-    switch (type) {
-      case 'framework': return <BarChart3 className="w-4 h-4 text-emerald-600" />
-      case 'story': return <Target className="w-4 h-4 text-emerald-600" />
-      case 'trend': return <TrendingUp className="w-4 h-4 text-emerald-600" />
-      case 'mistake': return <AlertCircle className="w-4 h-4 text-emerald-600" />
-      case 'metrics': return <Sparkles className="w-4 h-4 text-emerald-600" />
-      default: return <BarChart3 className="w-4 h-4 text-emerald-600" />
-    }
-  }
-
+  // Content actions
   const handleScheduleContent = (content: any) => {
     setSelectedContent(content)
     setShowScheduleModal(true)
+  }
+
+  const handleContinueEditing = (content: any) => {
+    const creationMode = content.variations_data?.creation_mode
+    
+    if (creationMode === 'marcus') {
+      window.location.href = '/chat/marcus?contentId=' + content.id
+    } else if (creationMode === 'standard') {
+      window.location.href = '/writer-suite?contentId=' + content.id
+    } else {
+      window.location.href = '/writer-suite?contentId=' + content.id
+    }
+  }
+
+  const handleImageAction = (content: any) => {
+    localStorage.setItem('selectedContentForImage', JSON.stringify(content))
+    window.location.href = '/image-generation'
   }
 
   const handlePublishNow = async (contentId: string) => {
@@ -157,13 +147,73 @@ const getEmptyStateMessage = () => {
     }
   }
 
+  const handleDeleteContent = async (contentId: string) => {
+    const confirmed = window.confirm('Are you sure you want to delete this content? This action cannot be undone.')
+    if (confirmed) {
+      const success = await deleteContent(contentId)
+      if (success) {
+        toast({
+          title: "Success",
+          description: "Content deleted successfully",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete content",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
+  // Utility functions
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'draft': return 'bg-blue-50 text-blue-700 border-blue-200'
+      case 'scheduled': return 'bg-yellow-50 text-yellow-700 border-yellow-200'
+      case 'published': return 'bg-green-50 text-green-700 border-green-200'
+      case 'archived': return 'bg-gray-50 text-gray-700 border-gray-200'
+      default: return 'bg-blue-50 text-blue-700 border-blue-200'
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'draft': return <Edit3 className="w-3 h-3" />
+      case 'scheduled': return <Clock className="w-3 h-3" />
+      case 'published': return <CheckCircle className="w-3 h-3" />
+      case 'archived': return <Archive className="w-3 h-3" />
+      default: return <Edit3 className="w-3 h-3" />
+    }
+  }
+
+  const getContentTypeIcon = (type: string) => {
+    switch (type) {
+      case 'framework': return <BarChart3 className="w-4 h-4 text-emerald-600" />
+      case 'story': return <Target className="w-4 h-4 text-emerald-600" />
+      case 'trend': return <TrendingUp className="w-4 h-4 text-emerald-600" />
+      case 'mistake': return <AlertCircle className="w-4 h-4 text-emerald-600" />
+      case 'metrics': return <Sparkles className="w-4 h-4 text-emerald-600" />
+      default: return <BarChart3 className="w-4 h-4 text-emerald-600" />
+    }
+  }
+
+  const getContinueButtonText = (content: any): string => {
+    const creationMode = content.variations_data?.creation_mode
+    switch (creationMode) {
+      case 'marcus': return 'Continue in Marcus'
+      case 'standard': return 'Continue in Standard'
+      default: return 'Continue Editing'
+    }
+  }
+
   // Content Card Component
   const ContentCard = ({ content, columnType }: { content: any; columnType: string }) => {
     const IconComponent = getContentTypeIcon(content.content_type || content.type)
     
     return (
       <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-200 bg-white/80 backdrop-blur-sm">
-        <CardContent className="p-4">
+        <CardContent className="p-5">
           {/* Header */}
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center space-x-2">
@@ -183,7 +233,7 @@ const getEmptyStateMessage = () => {
           </h4>
 
           {/* Content Preview */}
-          <p className="text-sm text-gray-600 mb-3 line-clamp-3 leading-relaxed">
+          <p className="text-sm text-gray-600 mb-4 line-clamp-3 leading-relaxed">
             {content.content_text?.length > 120
               ? content.content_text.substring(0, 120) + '...'
               : content.content_text || 'No content available'}
@@ -204,14 +254,23 @@ const getEmptyStateMessage = () => {
           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 pt-3 border-t border-gray-100">
             <div className="flex items-center justify-between">
               <div className="flex space-x-2">
-                <Button size="sm" variant="outline" className="h-8 px-3">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="h-8 px-3 text-xs"
+                >
                   <Eye className="w-3 h-3 mr-1" />
                   Preview
                 </Button>
                 
-                <Button size="sm" variant="outline" className="h-8 px-3">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="h-8 px-3 text-xs"
+                  onClick={() => handleContinueEditing(content)}
+                >
                   <ArrowRight className="w-3 h-3 mr-1" />
-                  Continue
+                  {getContinueButtonText(content)}
                 </Button>
               </div>
 
@@ -227,7 +286,12 @@ const getEmptyStateMessage = () => {
                   </Button>
                 )}
                 
-                <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="h-8 w-8 p-0"
+                  onClick={() => handleImageAction(content)}
+                >
                   <Camera className="w-3 h-3" />
                 </Button>
 
@@ -248,6 +312,13 @@ const getEmptyStateMessage = () => {
                       <Archive className="w-3 h-3 mr-2" />
                       Archive
                     </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleDeleteContent(content.id)}
+                      className="text-red-600"
+                    >
+                      <Trash2 className="w-3 h-3 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -260,15 +331,15 @@ const getEmptyStateMessage = () => {
 
   // Empty State Component
   const EmptyColumn = ({ title, description }: { title: string; description: string }) => (
-    <Card className="border-dashed border-2 border-gray-300 bg-gray-50/50">
-      <CardContent className="p-8 text-center">
-        <div className="text-gray-400 mb-2">
-          <Archive className="w-8 h-8 mx-auto" />
-        </div>
-        <h4 className="font-medium text-gray-600 mb-1">{title}</h4>
-        <p className="text-sm text-gray-500">{description}</p>
-      </CardContent>
-    </Card>
+    <div className="col-span-full">
+      <Card className="border-dashed border-2 border-gray-300 bg-gray-50/50">
+        <CardContent className="p-12 text-center">
+          <Archive className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h4 className="font-medium text-gray-600 mb-2">{title}</h4>
+          <p className="text-sm text-gray-500">{description}</p>
+        </CardContent>
+      </Card>
+    </div>
   )
 
   if (loadingContent) {
@@ -340,11 +411,11 @@ const getEmptyStateMessage = () => {
                 </Button>
               </div>
 
-              {/* Filter Stats - Clickable Cards */}
+              {/* Filter Stats - Clickable Cards (Cyberminds Style) */}
               <div className="grid grid-cols-4 gap-4">
                 <Card 
                   className={`cursor-pointer transition-all duration-200 bg-white/80 backdrop-blur-sm border-2 hover:shadow-lg group ${
-                    activeFilter === 'draft' ? 'border-blue-500 shadow-md' : 'border-gray-200'
+                    activeFilter === 'draft' ? 'border-blue-500 shadow-md ring-2 ring-blue-100' : 'border-gray-200'
                   }`}
                   onClick={() => setActiveFilter('draft')}
                 >
@@ -369,7 +440,7 @@ const getEmptyStateMessage = () => {
                 
                 <Card 
                   className={`cursor-pointer transition-all duration-200 bg-white/80 backdrop-blur-sm border-2 hover:shadow-lg group ${
-                    activeFilter === 'scheduled' ? 'border-yellow-500 shadow-md' : 'border-gray-200'
+                    activeFilter === 'scheduled' ? 'border-yellow-500 shadow-md ring-2 ring-yellow-100' : 'border-gray-200'
                   }`}
                   onClick={() => setActiveFilter('scheduled')}
                 >
@@ -394,7 +465,7 @@ const getEmptyStateMessage = () => {
                 
                 <Card 
                   className={`cursor-pointer transition-all duration-200 bg-white/80 backdrop-blur-sm border-2 hover:shadow-lg group ${
-                    activeFilter === 'published' ? 'border-green-500 shadow-md' : 'border-gray-200'
+                    activeFilter === 'published' ? 'border-green-500 shadow-md ring-2 ring-green-100' : 'border-gray-200'
                   }`}
                   onClick={() => setActiveFilter('published')}
                 >
@@ -419,7 +490,7 @@ const getEmptyStateMessage = () => {
                 
                 <Card 
                   className={`cursor-pointer transition-all duration-200 bg-white/80 backdrop-blur-sm border-2 hover:shadow-lg group ${
-                    activeFilter === 'archived' ? 'border-gray-500 shadow-md' : 'border-gray-200'
+                    activeFilter === 'archived' ? 'border-gray-500 shadow-md ring-2 ring-gray-100' : 'border-gray-200'
                   }`}
                   onClick={() => setActiveFilter('archived')}
                 >
@@ -444,159 +515,24 @@ const getEmptyStateMessage = () => {
               </div>
 
               {/* Content Section - Shows Only Selected Filter */}
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold text-emerald-800 capitalize">
-                    {activeFilter} Content ({getCurrentContent().length})
+                  <h2 className="text-xl font-semibold text-emerald-800 capitalize flex items-center space-x-2">
+                    <span>{activeFilter} Content ({getCurrentContent().length})</span>
                   </h2>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {getCurrentContent().length > 0 ? (
                     getCurrentContent().map((content) => (
                       <ContentCard key={content.id} content={content} columnType={activeFilter} />
                     ))
                   ) : (
-                    <div className="col-span-full">
-                      <Card className="border-dashed border-2 border-gray-300 bg-gray-50/50">
-                        <CardContent className="p-12 text-center">
-                          <Archive className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                          <h4 className="font-medium text-gray-600 mb-2">
-                            No {activeFilter} content
-                          </h4>
-                          <p className="text-sm text-gray-500">
-                            {getEmptyStateMessage()}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </div>
+                    <EmptyColumn 
+                      title={`No ${activeFilter} content`}
+                      description={getEmptyStateMessage()}
+                    />
                   )}
-                </div>
-              </div>
-                
-                <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">Scheduled</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-yellow-600">{scheduledContent.length}</div>
-                    <p className="text-xs text-gray-500 mt-1">Ready to publish</p>
-                  </CardContent>
-                </Card>
-                
-                <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">Published</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-green-600">{publishedContent.length}</div>
-                    <p className="text-xs text-gray-500 mt-1">Live content</p>
-                  </CardContent>
-                </Card>
-                
-                <Card className="bg-white/80 backdrop-blur-sm border-gray-200">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">Archived</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-gray-600">{archivedContent.length}</div>
-                    <p className="text-xs text-gray-500 mt-1">Archived items</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Kanban Columns */}
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* Drafts Column */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-blue-600 flex items-center space-x-2">
-                      <Edit3 className="w-4 h-4" />
-                      <span>Drafts ({draftContent.length})</span>
-                    </h3>
-                  </div>
-                  
-                  <div className="space-y-4 min-h-[400px]">
-                    {draftContent.length > 0 ? (
-                      draftContent.map((content) => (
-                        <ContentCard key={content.id} content={content} columnType="draft" />
-                      ))
-                    ) : (
-                      <EmptyColumn 
-                        title="No drafts" 
-                        description="Create your first post!" 
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Scheduled Column */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-yellow-600 flex items-center space-x-2">
-                      <Clock className="w-4 h-4" />
-                      <span>Scheduled ({scheduledContent.length})</span>
-                    </h3>
-                  </div>
-                  
-                  <div className="space-y-4 min-h-[400px]">
-                    {scheduledContent.length > 0 ? (
-                      scheduledContent.map((content) => (
-                        <ContentCard key={content.id} content={content} columnType="scheduled" />
-                      ))
-                    ) : (
-                      <EmptyColumn 
-                        title="No scheduled content" 
-                        description="Schedule content from drafts!" 
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Published Column */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-green-600 flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4" />
-                      <span>Published ({publishedContent.length})</span>
-                    </h3>
-                  </div>
-                  
-                  <div className="space-y-4 min-h-[400px]">
-                    {publishedContent.length > 0 ? (
-                      publishedContent.map((content) => (
-                        <ContentCard key={content.id} content={content} columnType="published" />
-                      ))
-                    ) : (
-                      <EmptyColumn 
-                        title="No published content" 
-                        description="Content will appear here once published" 
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Archived Column */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-600 flex items-center space-x-2">
-                      <Archive className="w-4 h-4" />
-                      <span>Archived ({archivedContent.length})</span>
-                    </h3>
-                  </div>
-                  
-                  <div className="space-y-4 min-h-[400px]">
-                    {archivedContent.length > 0 ? (
-                      archivedContent.map((content) => (
-                        <ContentCard key={content.id} content={content} columnType="archived" />
-                      ))
-                    ) : (
-                      <EmptyColumn 
-                        title="No archived content" 
-                        description="Archived content will appear here" 
-                      />
-                    )}
-                  </div>
                 </div>
               </div>
             </div>
