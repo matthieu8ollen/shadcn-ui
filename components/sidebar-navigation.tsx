@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ImageIcon,
+  CheckSquare,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -25,6 +26,7 @@ const navigationItems = [
   { icon: Folder, label: "Production Pipeline", href: "/production-pipeline" },
   { icon: Calendar, label: "Calendar", href: "/content-calendar" },
   { icon: ImageIcon, label: "Image Generation", href: "/image-generation" },
+  { icon: CheckSquare, label: "Content Approval", href: "/content-approval" },
   { icon: BarChart3, label: "Analytics", href: "/analytics" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ]
