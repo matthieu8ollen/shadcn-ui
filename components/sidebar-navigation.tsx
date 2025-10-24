@@ -26,6 +26,7 @@ const navigationItems = [
   { icon: Folder, label: "Production Pipeline", href: "/production-pipeline" },
   { icon: Calendar, label: "Calendar", href: "/content-calendar" },
   { icon: ImageIcon, label: "Image Generation", href: "/image-generation" },
+  { icon: CheckSquare, label: "Admin Client Portal", href: "/admin-client-portal" },
   { icon: CheckSquare, label: "Content Approval", href: "/client-approval-portal" },
   { icon: BarChart3, label: "Analytics", href: "/analytics" },
   { icon: Settings, label: "Settings", href: "/settings" },
